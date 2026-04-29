@@ -2,6 +2,28 @@
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
     "PingFang SC", "Microsoft YaHei", sans-serif;
+  --bg: #f7f7f8;
+  --fg: #1f1f23;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card: #ffffff;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --warn: #d97706;
+  --error: #dc2626;
+  --success: #16a34a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141a;
+    --fg: #e6e6ea;
+    --muted: #9ca3af;
+    --border: #2c2c34;
+    --card: #1c1c25;
+    --accent: #60a5fa;
+    --accent-fg: #0a0a10;
+  }
 }
 
 * {
@@ -10,18 +32,113 @@
 
 body {
   margin: 0;
-  background: #f7f7f8;
-  color: #1f1f23;
+  background: var(--bg);
+  color: var(--fg);
   min-height: 100vh;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #14141a;
-    color: #e6e6ea;
-  }
+a {
+  color: var(--accent);
+  text-decoration: none;
 }
 
-a {
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+button.danger {
+  background: transparent;
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
   color: inherit;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+textarea {
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+header.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+header.app-header h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+header.app-header nav {
+  display: flex;
+  gap: 16px;
+  margin-left: 12px;
+  font-size: 14px;
+}
+
+main.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
 }

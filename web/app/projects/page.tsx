@@ -1,14 +1,11 @@
-async function fetchProjects() {
-  const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import Link from "next/link";
+import { api, Project } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
+
+async function fetchProjects(): Promise<Project[]> {
   try {
-    const res = await fetch(`${base}/api/projects`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as Array<{
-      id: string;
-      title: string;
-      direction: string;
-      status: string;
-    }>;
+    return await api.listProjects();
   } catch {
     return [];
   }
@@ -17,21 +14,30 @@ async function fetchProjects() {
 export default async function ProjectsPage() {
   const projects = await fetchProjects();
   return (
-    <main style={{ padding: 32, maxWidth: 760, margin: "0 auto" }}>
-      <h1>项目列表</h1>
+    <main className="container">
+      <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <h2>项目列表</h2>
+        <Link href="/projects/new" className="primary" style={{ padding: "6px 14px", borderRadius: 6, color: "white", background: "var(--accent)" }}>
+          + 新建项目
+        </Link>
+      </header>
       {projects.length === 0 ? (
-        <p style={{ opacity: 0.7 }}>
-          暂无项目。M0 仅提供骨架,创建项目走后端 API:
-          <code> POST /api/projects {`{"title":"...","direction":"documentary"}`}</code>
-        </p>
+        <p className="muted">暂无项目。先创建一个,选择 documentary 方向。</p>
       ) : (
-        <ul>
+        <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
           {projects.map((p) => (
-            <li key={p.id}>
-              <strong>{p.title}</strong> · {p.direction} · {p.status}
-            </li>
+            <Link key={p.id} href={`/projects/${p.id}`} className="card" style={{ display: "block" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <strong>{p.title}</strong>
+                <span className="tag">{p.direction}</span>
+              </div>
+              {p.brief && <p className="muted" style={{ marginTop: 6 }}>{p.brief}</p>}
+              <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                {new Date(p.created_at).toLocaleString()} · {p.id.slice(0, 12)}
+              </div>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

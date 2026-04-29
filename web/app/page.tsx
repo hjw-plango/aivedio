@@ -2,22 +2,32 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main style={{ padding: 32, maxWidth: 760, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 8 }}>aivedio</h1>
-      <p style={{ marginTop: 0, opacity: 0.7 }}>
-        通用型 AI 视频生成 agent 平台 · P0 非遗纪录片 pilot
-      </p>
-      <ul style={{ lineHeight: 2 }}>
-        <li>
-          <Link href="/projects">项目列表</Link>
-        </li>
-        <li>
-          <a href="/health">后端健康检查</a>
-        </li>
-      </ul>
-      <p style={{ opacity: 0.6, fontSize: 14 }}>
-        M0 骨架 — pipeline / assets / 微调配置后续里程碑接入。
-      </p>
+    <main className="container">
+      <h2>欢迎</h2>
+      <p className="muted">通用型 AI 视频生成 agent 平台。P0 阶段聚焦非遗纪录片 15 镜 pilot 验证。</p>
+
+      <section className="card" style={{ marginTop: 24 }}>
+        <h3 style={{ marginTop: 0 }}>快速上手</h3>
+        <ol style={{ lineHeight: 1.8 }}>
+          <li>
+            <Link href="/projects/new">创建项目</Link>:选择 documentary 方向,写一段 brief。
+          </li>
+          <li>进入项目页,粘贴或上传非遗资料(文本/md)。</li>
+          <li>点"启动 Pipeline",研究 → 编剧 → 分镜 → 质检 顺序执行。</li>
+          <li>每步可暂停、查看 progress_note、tool_call、产物。</li>
+          <li>分镜阶段产出即梦提示词,用户复制到即梦官网手动生成。</li>
+          <li>视频回传后人工评分,质检 Agent 给出重跑建议。</li>
+        </ol>
+      </section>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <h3 style={{ marginTop: 0 }}>当前里程碑</h3>
+        <ul style={{ lineHeight: 1.8 }}>
+          <li>✅ M0 基础设施 / M1 编排引擎 / M2 4 个 Agent / M3 前端可视化</li>
+          <li>🔧 M4 即梦手动桥与资产管理</li>
+          <li>🔧 M5 端到端 15 镜 pilot 验证</li>
+        </ul>
+      </section>
     </main>
   );
 }
