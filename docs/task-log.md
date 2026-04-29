@@ -25,6 +25,16 @@
 - `docs/asset-policy.md`
 - `docs/roadmap.md`
 - `docs/task-log.md`
+- `docs/model-strategy.md`
+
+### 模型策略更新
+
+- 不按成本优化，默认使用中转站最强模型。
+- 文本与推理主力为 `GPT-5.5` 与 `Claude Opus 4.6 / 4.7`。
+- 生图主力为 `GPT Image 2`。
+- 视频仍采用 `manual_jimeng`，即梦官网手动执行。
+- P0/P1 不再增加更多文本生成模型，避免风格漂移和调试复杂度。
+- 完整系统仍需要 embedding、reranker、OCR、ASR、视频理解、版权规则引擎等辅助能力。
 
 ### 下一步
 
