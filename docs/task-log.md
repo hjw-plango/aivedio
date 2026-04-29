@@ -1,5 +1,14 @@
 # 执行记录
 
+## 2026-04-30
+
+### 已完成
+
+- 明确三方协作方式：GitHub 作为唯一代码交换入口，Claude 在 VPS 编码，本地助手做架构把关和 PR 审核。
+- 新增 `docs/collaboration.md`，记录分支命名、Claude 交付包、本地审核重点和首个 M0 任务指令。
+- 新增 `.github/pull_request_template.md`，统一 PR 范围、验证输出和 P0 边界自检。
+- 更新 README 文档入口，补充协作文档。
+
 ## 2026-04-29
 
 ### 已完成
