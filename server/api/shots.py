@@ -157,14 +157,52 @@ def list_assets(
         return [_asset_dict(a) for a in rows]
 
 
+def _rename_for_score(asset: ShotAsset) -> None:
+    """F8.6: keep manual_jimeng_video files named jimeng_v{ver}_score{score}.{ext}.
+
+    Called whenever score changes. Best-effort: if file missing, no-op.
+    """
+    import re
+
+    from server.utils.hashing import file_sha256
+
+    if not asset.file_path or asset.score is None:
+        return
+    src = Path(asset.file_path)
+    if not src.exists():
+        return
+    stem = src.stem
+    suffix = src.suffix
+    new_stem = re.sub(
+        r"_score[0-9]+(\.[0-9]+)?$",
+        f"_score{int(round(asset.score))}",
+        stem,
+    )
+    if new_stem == stem:
+        new_stem = f"{stem}_score{int(round(asset.score))}"
+    target = src.with_name(f"{new_stem}{suffix}")
+    if target == src:
+        return
+    src.rename(target)
+    asset.file_path = str(target)
+    asset.file_hash = file_sha256(target)
+
+
 @router.patch("/api/assets/{asset_id}")
 def patch_asset(asset_id: str, payload: AssetPatch) -> dict[str, Any]:
     with session_scope() as session:
         asset = session.get(ShotAsset, asset_id)
         if not asset:
             raise HTTPException(status_code=404, detail="asset_not_found")
+        old_score = asset.score
         for field, value in payload.model_dump(exclude_unset=True).items():
             setattr(asset, field, value)
+        if (
+            asset.asset_type == "manual_jimeng_video"
+            and asset.score is not None
+            and asset.score != old_score
+        ):
+            _rename_for_score(asset)
         asset.updated_at = datetime.now(timezone.utc)
         session.flush()
         return _asset_dict(asset)

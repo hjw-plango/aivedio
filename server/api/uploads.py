@@ -4,10 +4,14 @@ User flow:
   1. Storyboard agent emits jimeng_video_prompt (text)
   2. User copies prompt into Jimeng web UI, generates video, downloads
   3. User uploads the .mp4 to /api/shots/{shot_id}/jimeng-video
-  4. System stores file, creates a manual_jimeng_video ShotAsset (status=draft)
-  5. Optional: user fills score / failure_tags / notes via PATCH
+  4. System stores file at jimeng_v{version}_score{score}.mp4 (score=0 until rated)
+  5. User PATCHes score / failure_tags / notes; if score changes, file is
+     renamed in place to embed the new score (F8.6).
 
-Keeps versions: each upload increments version under the same shot_id.
+Versioning + candidate cap (F8.2): each upload increments version under
+(shot_id, asset_type). Non-rejected candidates per type are capped at
+MAX_CANDIDATES_PER_TYPE; over the cap we return 409 with the active
+candidate ids so the user can reject one first.
 """
 
 from __future__ import annotations
@@ -26,6 +30,32 @@ from server.utils.ids import new_id
 
 router = APIRouter(tags=["uploads"])
 
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500MB per docs/requirements.md NF1
+MAX_CANDIDATES_PER_TYPE = 3
+ALLOWED_VIDEO_SUFFIXES = {"mp4", "mov", "mkv", "webm", "avi"}
+
+
+def _check_candidate_capacity(session, shot_id: str, asset_type: str) -> None:
+    active = (
+        session.query(ShotAsset)
+        .filter(
+            ShotAsset.shot_id == shot_id,
+            ShotAsset.asset_type == asset_type,
+            ShotAsset.status != "rejected",
+        )
+        .all()
+    )
+    if len(active) >= MAX_CANDIDATES_PER_TYPE:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "candidate_cap_reached",
+                "limit": MAX_CANDIDATES_PER_TYPE,
+                "candidate_ids": [a.id for a in active],
+                "hint": "PATCH some assets to status=rejected first",
+            },
+        )
+
 
 @router.post("/api/shots/{shot_id}/jimeng-video")
 async def upload_jimeng_video(
@@ -38,7 +68,7 @@ async def upload_jimeng_video(
     if not file.filename:
         raise HTTPException(status_code=400, detail="missing_filename")
     suffix = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if suffix not in {"mp4", "mov", "mkv", "webm", "avi"}:
+    if suffix not in ALLOWED_VIDEO_SUFFIXES:
         raise HTTPException(status_code=400, detail="unsupported_video_format")
 
     with session_scope() as session:
@@ -46,7 +76,7 @@ async def upload_jimeng_video(
         if not shot:
             raise HTTPException(status_code=404, detail="shot_not_found")
         project_id = shot.project_id
-        # next version
+        _check_candidate_capacity(session, shot_id, "manual_jimeng_video")
         existing = (
             session.query(ShotAsset)
             .filter(ShotAsset.shot_id == shot_id, ShotAsset.asset_type == "manual_jimeng_video")
@@ -56,11 +86,14 @@ async def upload_jimeng_video(
         next_version = (existing.version + 1) if existing else 1
 
     body = await file.read()
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="file_too_large")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}")
     try:
         tmp.write(body)
         tmp.close()
-        target_name = f"jimeng_v{next_version}.{suffix}"
+        # F8.6: jimeng_v{version}_score{score}.{suffix}; score=0 until rated.
+        target_name = f"jimeng_v{next_version}_score0.{suffix}"
         stored = store_file(project_id, shot_id, tmp.name, target_name)
     finally:
         try:
@@ -131,6 +164,7 @@ async def upload_generic_asset(
         if not shot:
             raise HTTPException(status_code=404, detail="shot_not_found")
         project_id = shot.project_id
+        _check_candidate_capacity(session, shot_id, asset_type)
         existing = (
             session.query(ShotAsset)
             .filter(ShotAsset.shot_id == shot_id, ShotAsset.asset_type == asset_type)
@@ -140,6 +174,8 @@ async def upload_generic_asset(
         next_version = (existing.version + 1) if existing else 1
 
     body = await file.read()
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="file_too_large")
     if not rights_holder and asset_type in {"real_footage", "archive_footage"}:
         raise HTTPException(status_code=400, detail="rights_holder_required_for_user_footage")
 
