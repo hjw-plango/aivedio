@@ -1,5 +1,8 @@
 # 跑起来
 
+> P0 完整版（M0~M5 全部合入 main）。完整状态见 [STATUS.md](./STATUS.md)。
+
+
 ## 要求
 
 - Python 3.11+
@@ -61,8 +64,20 @@ npm run dev
 
 ```bash
 cd <repo root>
-pytest -q
+PYTHONPATH=. .venv/bin/python -m pytest -q
+# 当前 29 passed
 ```
+
+## 四点五、一键端到端
+
+跑 3 主题 × 15 镜的完整 pilot：
+
+```bash
+PYTHONPATH=. .venv/bin/python -m scripts.run_pilot
+```
+
+跑完会 print 3 个 project_id；浏览器打开 `/projects/<id>/shots` 就能看到全部即梦提示词，按"复制提示词"按钮粘到即梦官网，回传视频后人工评分。
+
 
 ## 五、目录速览
 

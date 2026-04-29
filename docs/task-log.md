@@ -11,7 +11,7 @@
 | M2 4 个 Agent | feature/m2-agents | #3 | 5f65a71 | 14 passed |
 | M3 前端可视化 | feature/m3-ui | #4 | 214ed0f | 19 passed + npm build |
 | M4 即梦桥 + 资产 | feature/m4-jimeng | #5 | 4703b1f | 28 passed + npm build |
-| M5 Pilot 数据 + e2e | feature/m5-pilot | (本次) | - | 29 passed (含 3 主题 e2e) |
+| M5 Pilot 数据 + e2e | feature/m5-pilot | #6 | 7316e68 | 29 passed (含 3 主题 e2e) |
 
 ### 工程亮点
 
