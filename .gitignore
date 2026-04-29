@@ -22,5 +22,21 @@ tmp/
 *.wav
 *.mp3
 
+# local data and runtime
+assets/*
+!assets/.gitkeep
+!assets/README.md
+var/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# IDE / OS
 Thumbs.db
 .DS_Store
+.idea/
+.vscode/

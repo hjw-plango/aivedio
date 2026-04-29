@@ -1,0 +1,47 @@
+version: 1
+description: 非遗纪录片红线规则。命中任一项立即 reject,不允许自动通过。
+
+rules:
+  - id: rl_inheritor_face
+    name: 不生成具体传承人正脸
+    triggers:
+      - "传承人正脸"
+      - "肖像"
+      - "面部特写"
+    severity: error
+    note: AI 不允许伪造可识别的真实传承人肖像。改用背影、手部、剪影。
+
+  - id: rl_fake_archive
+    name: 禁止冒充真实历史影像
+    triggers:
+      - "历史影像"
+      - "档案影像"
+      - "纪实档案"
+    severity: error
+    note: AI 生成内容必须显式标注 imagery / 复原意象,不能假装是档案。
+
+  - id: rl_wrong_craft
+    name: 工艺步骤必须有 FactCard 支撑
+    triggers:
+      - missing_fact_ref
+    severity: error
+    note: 提示词中描述具体工艺步骤时必须引用对应 FactCard。
+
+  - id: rl_no_expert_replacement
+    name: 不让 AI 质检替代专家审核
+    triggers:
+      - "专家审核已通过"
+      - "权威认证"
+    severity: error
+    note: 任何"权威/专家认证"的描述都必须由真实专家书面确认,不允许 AI 自行声称。
+
+  - id: rl_ad_style
+    name: 禁止广告化语气
+    triggers:
+      - "匠心"
+      - "传承千年"
+      - "震撼"
+      - "惊艳"
+      - "极致"
+    severity: warning
+    note: 纪录片需克制语气,广告词命中后由 review agent 提示重写。
