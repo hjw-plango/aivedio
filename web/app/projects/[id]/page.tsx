@@ -30,7 +30,8 @@ export default async function ProjectDetailPage({ params }: Props) {
 
       <nav style={{ display: "flex", gap: 16, margin: "12px 0", fontSize: 14 }}>
         <Link href={`/projects/${id}/facts`}>FactCard</Link>
-        <span className="muted">分镜与即梦桥(M4)</span>
+        <Link href={`/projects/${id}/shots`}>分镜与即梦桥</Link>
+        <Link href={`/projects/${id}/assets`}>资产管理</Link>
       </nav>
 
       <section style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>

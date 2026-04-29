@@ -179,8 +179,17 @@ _TYPE_TIPS = {
 }
 
 
+def _extract_template_skeleton(template: str) -> str:
+    """Pull out the first ```text fenced block; ignore markdown around it."""
+    match = re.search(r"```text\s*\n([\s\S]*?)```", template)
+    if match:
+        return match.group(1).strip()
+    return template.strip()
+
+
 def _build_jimeng_prompt(template: str, shot: dict[str, Any], fact_cards: list[dict[str, Any]]) -> str:
-    body = template.replace("【非遗项目】", shot.get("topic") or "非遗")
+    skeleton = _extract_template_skeleton(template)
+    body = skeleton.replace("【非遗项目】", shot.get("topic") or "非遗")
     body = body.replace("【shot.subject】", shot.get("subject", ""))
     body = body.replace("【shot.composition】", shot.get("composition", ""))
     body = body.replace("【shot.lighting】", shot.get("lighting", ""))
