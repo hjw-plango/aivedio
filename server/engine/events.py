@@ -21,7 +21,7 @@ Visibility:
 
 from __future__ import annotations
 
-import asyncio
+import queue
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -56,31 +56,40 @@ class EmittedEvent:
 class _Broadcaster:
     """In-memory pub/sub for SSE.
 
-    A single process is fine for P0 single-user. P1 may switch to Redis.
+    Thread-safe: agents emit from background workers, SSE consumers wait in
+    the event loop. We use a stdlib queue.Queue (thread-safe) and have the
+    SSE endpoint pull via asyncio.to_thread, instead of asyncio.Queue which
+    cannot be safely fed from a non-loop thread.
     """
 
     def __init__(self) -> None:
-        self._subscribers: dict[str, set[asyncio.Queue[EmittedEvent]]] = {}
+        import threading
 
-    def subscribe(self, channel: str) -> asyncio.Queue[EmittedEvent]:
-        queue: asyncio.Queue[EmittedEvent] = asyncio.Queue(maxsize=1024)
-        self._subscribers.setdefault(channel, set()).add(queue)
-        return queue
+        self._subscribers: dict[str, set[queue.Queue[EmittedEvent]]] = {}
+        self._lock = threading.Lock()
 
-    def unsubscribe(self, channel: str, queue: asyncio.Queue[EmittedEvent]) -> None:
-        subs = self._subscribers.get(channel)
-        if subs and queue in subs:
-            subs.remove(queue)
-            if not subs:
-                self._subscribers.pop(channel, None)
+    def subscribe(self, channel: str) -> "queue.Queue[EmittedEvent]":
+        q: queue.Queue[EmittedEvent] = queue.Queue(maxsize=1024)
+        with self._lock:
+            self._subscribers.setdefault(channel, set()).add(q)
+        return q
+
+    def unsubscribe(self, channel: str, q: "queue.Queue[EmittedEvent]") -> None:
+        with self._lock:
+            subs = self._subscribers.get(channel)
+            if subs and q in subs:
+                subs.remove(q)
+                if not subs:
+                    self._subscribers.pop(channel, None)
 
     def publish(self, channels: list[str], event: EmittedEvent) -> None:
-        for ch in channels:
-            for q in list(self._subscribers.get(ch, [])):
-                try:
-                    q.put_nowait(event)
-                except asyncio.QueueFull:
-                    pass
+        with self._lock:
+            targets = [q for ch in channels for q in list(self._subscribers.get(ch, []))]
+        for q in targets:
+            try:
+                q.put_nowait(event)
+            except queue.Full:
+                pass
 
 
 broadcaster = _Broadcaster()

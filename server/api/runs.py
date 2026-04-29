@@ -214,16 +214,24 @@ def list_events(run_id: str, since: int = 0) -> list[StepEventOut]:
 @router.get("/{run_id}/stream")
 async def stream(run_id: str, request: Request) -> EventSourceResponse:
     """SSE endpoint pushing live StepEvents for a graph run."""
-    queue = broadcaster.subscribe(f"run:{run_id}")
+    import queue as _queue
+
+    channel = f"run:{run_id}"
+    sub = broadcaster.subscribe(channel)
+
+    def _blocking_get():
+        try:
+            return sub.get(timeout=15.0)
+        except _queue.Empty:
+            return None
 
     async def event_generator():
         try:
             while True:
                 if await request.is_disconnected():
                     break
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
-                except asyncio.TimeoutError:
+                event = await asyncio.to_thread(_blocking_get)
+                if event is None:
                     yield {"event": "ping", "data": "{}"}
                     continue
                 yield {
@@ -242,6 +250,6 @@ async def stream(run_id: str, request: Request) -> EventSourceResponse:
                     ),
                 }
         finally:
-            broadcaster.unsubscribe(f"run:{run_id}", queue)
+            broadcaster.unsubscribe(channel, sub)
 
     return EventSourceResponse(event_generator())
