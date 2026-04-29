@@ -7,7 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from server.api.health import router as health_router
 from server.api.projects import router as projects_router
+from server.api.runs import router as runs_router
 from server.data.session import init_db
+from server.engine import workflow as _workflow_registry  # noqa: F401  -- registers workflows
 from server.settings import get_settings
 
 
@@ -35,6 +37,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(projects_router)
+    app.include_router(runs_router)
     return app
 
 
