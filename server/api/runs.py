@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
-from server.data.models import GraphRun, Step, StepEvent
+from server.data.models import GraphRun, Material, Project, Step, StepEvent
 from server.data.session import session_scope
 from server.engine.events import broadcaster
 from server.engine.graph_run import (
@@ -112,13 +112,46 @@ def workflows() -> list[str]:
 
 @router.post("", response_model=RunOut)
 def create_run_endpoint(payload: RunCreate) -> RunOut:
+    initial_input = _build_initial_input(payload.project_id, payload.initial_input)
     run_id = create_run(
         project_id=payload.project_id,
         workflow_name=payload.workflow,
         auto_mode=payload.auto_mode,
     )
-    execute_run_async(run_id, payload.initial_input)
+    execute_run_async(run_id, initial_input)
     return _get_run(run_id)
+
+
+def _build_initial_input(project_id: str, override: dict[str, Any]) -> dict[str, Any]:
+    """Hydrate the run with project brief + materials so agents have context."""
+    with session_scope() as session:
+        project = session.get(Project, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="project_not_found")
+        materials = (
+            session.query(Material)
+            .filter(Material.project_id == project_id)
+            .order_by(Material.created_at)
+            .all()
+        )
+        materials_payload = [
+            {
+                "id": m.id,
+                "source_type": m.source_type,
+                "source_url": m.source_url,
+                "content": m.content,
+                "file_path": m.file_path,
+                "version": m.version,
+            }
+            for m in materials
+        ]
+        base = {
+            "brief": project.brief or "",
+            "materials": materials_payload,
+            "direction": project.direction,
+        }
+    base.update(override or {})
+    return base
 
 
 @router.get("", response_model=list[RunOut])

@@ -22,10 +22,9 @@ rules:
 
   - id: rl_wrong_craft
     name: 工艺步骤必须有 FactCard 支撑
-    triggers:
-      - missing_fact_ref
+    triggers: []  # semantic rule — handled in review._local_red_line_scan
     severity: error
-    note: 提示词中描述具体工艺步骤时必须引用对应 FactCard。
+    note: 提示词中描述具体工艺步骤(步骤/工序/先/再/烧/拉坯/修坯/上釉/针脚/理线/勾描/打底/晾坯)时,shot 必须引用对应 FactCard;fact_refs 为空则触发。
 
   - id: rl_no_expert_replacement
     name: 不让 AI 质检替代专家审核
