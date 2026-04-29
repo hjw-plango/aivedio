@@ -1,0 +1,58 @@
+version: 1
+description: 纪录片镜头类型分类与 AI 适配建议。
+
+types:
+  - id: establishing
+    label: 空镜
+    ai_friendly: true
+    description: 工坊外景、室内全景、环境氛围。无具体人物。
+    typical_motion:
+      - 缓慢平移
+      - 固定机位
+      - 轻微推近
+
+  - id: craft_close
+    label: 工艺特写
+    ai_friendly: true
+    description: 手部局部、工具与材料接触瞬间。不展示面部。
+    typical_motion:
+      - 固定机位
+      - 极慢缓推
+
+  - id: material_close
+    label: 材料特写
+    ai_friendly: true
+    description: 瓷土、丝线、颜料、布料的微距。
+    typical_motion:
+      - 固定机位
+      - 缓慢平移
+
+  - id: silhouette
+    label: 剪影 / 背影
+    ai_friendly: true
+    description: 逆光人物剪影、背影、侧影。不展示可识别面部。
+    typical_motion:
+      - 固定机位
+      - 慢摇
+
+  - id: imagery
+    label: 意象镜头
+    ai_friendly: true
+    description: 火光、烟气、面具、纹样的象征性画面。需明确标注 imagery。
+    typical_motion:
+      - 慢速推近
+      - 固定机位
+
+  - id: portrait_interview
+    label: 传承人正脸采访
+    ai_friendly: false
+    description: 传承人面部特写、口述。**必须真拍**。
+    typical_motion:
+      - 固定机位
+
+  - id: ritual_real
+    label: 真实仪式 / 演出
+    ai_friendly: false
+    description: 完整仪式、真实演出。必须真实拍摄或授权档案。
+    typical_motion:
+      - 固定多机位

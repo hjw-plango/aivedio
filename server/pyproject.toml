@@ -1,0 +1,14 @@
+[project]
+name = "aivedio-server"
+version = "0.1.0"
+description = "AI video generation agent platform - backend"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
