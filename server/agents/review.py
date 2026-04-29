@@ -140,11 +140,38 @@ def _parse_review(text: str) -> dict[str, list]:
     }
 
 
+_CRAFT_STEP_KEYWORDS = (
+    "步骤",
+    "工序",
+    "先",
+    "再",
+    "然后",
+    "烧",
+    "拉坯",
+    "修坯",
+    "上釉",
+    "针脚",
+    "理线",
+    "勾描",
+    "打底",
+    "晾坯",
+)
+
+
 def _local_red_line_scan(
     rules: list[dict[str, Any]],
     shots: list[dict[str, Any]],
     narration: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Deterministic local red-line scan.
+
+    Substring rules (rl_inheritor_face / rl_fake_archive / rl_no_expert_replacement /
+    rl_ad_style) are matched against the concatenated shot/narration text.
+
+    Semantic rules (rl_wrong_craft) require structural inspection: a shot whose
+    description mentions a craft step but carries no fact_refs is the trigger.
+    These are routed through a dedicated check rather than a literal trigger.
+    """
     hits: list[dict[str, Any]] = []
     haystacks: list[tuple[str, str]] = []
     for shot in shots:
@@ -160,6 +187,28 @@ def _local_red_line_scan(
         rule_id = rule.get("id", "")
         triggers = rule.get("triggers", []) or []
         severity = rule.get("severity", "warning")
+
+        if rule_id == "rl_wrong_craft":
+            for shot in shots:
+                if shot.get("requires_real_footage"):
+                    continue
+                text = " ".join(
+                    str(shot.get(k, ""))
+                    for k in ("subject", "jimeng_prompt", "image_prompt")
+                )
+                mentions_step = any(kw in text for kw in _CRAFT_STEP_KEYWORDS)
+                refs = shot.get("fact_refs") or []
+                if mentions_step and not refs:
+                    hits.append(
+                        {
+                            "rule_id": rule_id,
+                            "target": f"shot:{shot.get('shot_id')}",
+                            "matched_text": "craft step described without fact_refs",
+                            "severity": severity,
+                        }
+                    )
+            continue
+
         for target, text in haystacks:
             for trig in triggers:
                 if not isinstance(trig, str):
