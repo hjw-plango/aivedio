@@ -1,5 +1,36 @@
 # 执行记录
 
+## 2026-04-29（M0~M5 实施）
+
+### 完成的里程碑（全部 P0）
+
+| 里程碑 | 分支 | PR | merge commit | 测试 |
+|-------|------|-----|--------------|------|
+| M0 基础设施 | feature/m0-infra | #1 | c8ec942 | 8 passed |
+| M1 编排引擎 + SSE | feature/m1-pipeline | #2 | a4def45 | 11 passed |
+| M2 4 个 Agent | feature/m2-agents | #3 | 5f65a71 | 14 passed |
+| M3 前端可视化 | feature/m3-ui | #4 | 214ed0f | 19 passed + npm build |
+| M4 即梦桥 + 资产 | feature/m4-jimeng | #5 | 4703b1f | 28 passed + npm build |
+| M5 Pilot 数据 + e2e | feature/m5-pilot | (本次) | - | 29 passed (含 3 主题 e2e) |
+
+### 工程亮点
+
+- 每个里程碑都派独立子 agent 做冷启动审核，记录 ❌ 阻塞项，修复后再合并。
+- M1 子 agent 发现 broadcaster 跨线程访问 asyncio.Queue 是真实 bug，改用 queue.Queue + asyncio.to_thread。
+- M2 子 agent 发现 rl_wrong_craft 红线 trigger 是死代码，改写成语义检查。
+- M3 子 agent 发现 hidden 档过滤错了 + offset 分页竞争，已修复。
+- M4 子 agent 发现即梦提示词把 markdown 元说明也注入了，改为只取 ```text 围栏内容；同时补 F8.6 命名规范、F8.2 候选上限、500MB size limit。
+
+### 端到端 Pilot 跑通
+
+3 主题 × 15 镜：景德镇制瓷 / 苏绣 / 川剧变脸 全部 success，各 15 即梦提示词。
+
+### 待人工验收
+
+- 用户复制 45 条即梦提示词到即梦官网，人工生成视频。
+- 视频回传到 /projects/{id}/shots 页面，填入 5 分制评分 + 失败标签。
+- 按 docs/pilot-result.md 表格汇总，判定方向是否进入 P1。
+
 ## 2026-04-30
 
 ### 已完成

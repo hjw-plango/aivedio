@@ -32,6 +32,7 @@ docs/task-plan.md         任务规划：M0~M6 里程碑与具体任务
 docs/requirements.md      功能需求：F1~F12 详细需求与验收清单
 docs/architecture.md      实现细节：数据结构、状态机、存储、错误处理、模型与检索接口
 docs/documentary-pilot.md 非遗纪录片 pilot：15 镜头、评分、失败处理
+docs/pilot-result.md      Pilot 复盘表（用户评分后填入）
 docs/collaboration.md     GitHub + Claude VPS + 本地助手审核的协作流程
 docs/task-log.md          执行记录和 git 版本
 ```
