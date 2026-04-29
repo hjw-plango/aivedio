@@ -85,6 +85,41 @@ export type FactCard = {
   updated_at: string;
 };
 
+export type ShotAsset = {
+  id: string;
+  project_id: string;
+  shot_id: string | null;
+  asset_type: string;
+  version: number;
+  status: "draft" | "accepted" | "rejected";
+  prompt: string;
+  file_path: string | null;
+  file_hash: string | null;
+  score: number | null;
+  failure_tags: string[];
+  notes: string;
+  rights: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Shot = {
+  id: string;
+  project_id: string;
+  sequence: number;
+  shot_type: string;
+  subject: string;
+  composition: string;
+  camera_motion: string;
+  lighting: string;
+  duration_estimate: number;
+  narration: string;
+  requires_real_footage: boolean;
+  fact_refs: string[];
+  assets: ShotAsset[];
+};
+
 const BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
 async function http<T>(
@@ -147,6 +182,47 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  // shots & assets
+  listShots: (projectId: string) => http<Shot[]>(`/api/projects/${projectId}/shots`),
+  patchShot: (shotId: string, body: Partial<Shot>) =>
+    http<Shot>(`/api/shots/${shotId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  listAssets: (
+    projectId: string,
+    params?: { asset_type?: string; status?: string; shot_id?: string },
+  ) => {
+    const qs = new URLSearchParams();
+    if (params?.asset_type) qs.set("asset_type", params.asset_type);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.shot_id) qs.set("shot_id", params.shot_id);
+    const tail = qs.toString() ? `?${qs.toString()}` : "";
+    return http<ShotAsset[]>(`/api/projects/${projectId}/assets${tail}`);
+  },
+  patchAsset: (assetId: string, body: Partial<ShotAsset>) =>
+    http<ShotAsset>(`/api/assets/${assetId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAsset: (assetId: string) =>
+    http<{ id: string; deleted: boolean }>(`/api/assets/${assetId}`, { method: "DELETE" }),
+  uploadJimengVideo: async (
+    shotId: string,
+    file: File,
+    extras: { notes?: string; aspect_ratio?: string; duration_seconds?: string } = {},
+  ) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (extras.notes) fd.append("notes", extras.notes);
+    fd.append("aspect_ratio", extras.aspect_ratio || "16:9");
+    fd.append("duration_seconds", extras.duration_seconds || "5");
+    const res = await fetch(`${BASE}/api/shots/${shotId}/jimeng-video`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+    return (await res.json()) as { id: string; shot_id: string; version: number; file_path: string };
+  },
+  fileUrl: (path: string) => `${BASE}/api/files?path=${encodeURIComponent(path)}`,
 
   // runs
   workflows: () => http<string[]>("/api/runs/workflows"),
