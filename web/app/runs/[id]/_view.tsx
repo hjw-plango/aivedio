@@ -83,24 +83,29 @@ export default function RunView({ runId }: { runId: string }) {
     };
   }, [runId, refreshRun]);
 
-  // poll as a safety net (events list endpoint).
+  // Polling safety net: full event list, dedupe by id, then merge.
+  // We do NOT use offset/since here — SSE arrival is unordered relative to
+  // DB write commit, and offset-based pagination races with concurrent emits.
   useEffect(() => {
     const t = setInterval(() => {
-      api.events(runId, events.length).then((newer) => {
-        if (newer.length === 0) return;
-        setEvents((prev) => {
-          const seen = new Set(prev.map((e) => e.id));
-          const merged = [...prev];
-          for (const e of newer) {
-            if (!seen.has(e.id)) merged.push(e);
-          }
-          return merged;
-        });
-      }).catch(() => {});
+      api.events(runId)
+        .then((all) => {
+          setEvents((prev) => {
+            if (all.length === prev.length) return prev;
+            const seen = new Set(prev.map((e) => e.id));
+            const merged = [...prev];
+            for (const e of all) {
+              if (!seen.has(e.id)) merged.push(e);
+            }
+            // keep stable insertion order; new events appended.
+            return merged;
+          });
+        })
+        .catch(() => {});
       refreshRun();
     }, 5000);
     return () => clearInterval(t);
-  }, [runId, events.length, refreshRun]);
+  }, [runId, refreshRun]);
 
   const stepsById = useMemo(() => {
     const map: Record<string, Step> = {};
@@ -140,7 +145,8 @@ export default function RunView({ runId }: { runId: string }) {
         ["artifact", "warning", "error", "finish"].includes(e.event_type),
       );
     }
-    return list.filter((e) => e.event_type === "finish");
+    // hidden: only show final artifacts per design.md §6
+    return list.filter((e) => e.event_type === "artifact");
   };
 
   return (
