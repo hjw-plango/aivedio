@@ -2,47 +2,33 @@
 
 ## 2026-04-29
 
-### 已确认
+### 已完成
 
-- 当前项目不是直接接火山云。
-- 当前只有即梦官网/即梦平台视频生成能力。
-- 即梦官网暂不按正式 API 能力设计。
-- 第一阶段采用方案 A：系统生成提示词，用户手动到即梦官网生成视频并回传。
-- 第一阶段重点改为 15 镜纪录片质感 pilot。
-- MVP 智能体从 10 个压缩到 4 个：内容、视觉、执行、质检。
-- 非遗纪录片不能 100% AI 生成，必须支持 AI 镜头与真实素材混合。
-- 传承人采访、人脸特写、历史影像必须走真拍或授权素材。
-- ShotAsset 继续保留，但加入 pin 和候选限制，避免版本树爆炸。
-- 资产 schema 必须预留版权字段。
+- 初始化 git。
+- 明确项目定位：通用型 AI 视频生成平台，非遗纪录片为首个深调方向。
+- 明确视频执行：方案 A，即梦官网手动生成并回传。
+- 明确 P0：先做非遗纪录片 15 镜 pilot。
+- 明确 MVP 智能体：内容、视觉、执行、质检。
+- 明确模型：GPT-5.5、Claude Opus 4.6/4.7、GPT Image 2，轻量操作可用 GPT-5.4-mini 或 DeepSeek V4 Flash。
+- 明确检索：不用向量库和 reranker，采用结构化事实库、知识图谱、全文检索、层级摘要、Agentic 查询规划。
+- 明确暂不接：ASR、独立 OCR、视频理解模型、自动视频质检。
+- 完成文档瘦身：10 份拆散文档压缩为 4 个审核入口。
 
-### 新增文档
+### 当前文档
 
-- `docs/project-strategy.md`
-- `docs/documentary-aesthetics.md`
-- `docs/pilot-15-shots.md`
-- `docs/agents.md`
-- `docs/jimeng-manual-workflow.md`
-- `docs/asset-policy.md`
-- `docs/roadmap.md`
+- `docs/README.md`
+- `docs/architecture.md`
+- `docs/documentary-pilot.md`
 - `docs/task-log.md`
-- `docs/model-strategy.md`
 
-### 模型策略更新
+### Git 记录
 
-- 不按成本优化，默认使用中转站最强模型。
-- 文本与推理主力为 `GPT-5.5` 与 `Claude Opus 4.6 / 4.7`。
-- 生图主力为 `GPT Image 2`。
-- 视频仍采用 `manual_jimeng`，即梦官网手动执行。
-- P0/P1 不再增加更多文本生成模型，避免风格漂移和调试复杂度。
-- 普通工具操作可选 `GPT-5.4-mini` 或 `DeepSeek V4 Flash`。
-- 不采用向量库和 reranker 作为核心检索方案。
-- 检索策略改为结构化事实库、知识图谱、上下文全文检索、层级摘要、Agentic 查询规划。
-- 暂不接 ASR、独立 OCR、视频理解模型，视频结果由人工评判。
-- 项目定位调整为通用型 AI 视频生成平台，非遗纪录片是首个深度调优方向，同时保留短剧和漫剧方向。
-- 新增 `docs/retrieval-strategy.md`。
+- `8a73935`：建立非遗纪录片 pilot 策略。
+- `d2d5aca`：建立模型策略。
+- `6718107`：修正检索和平台范围。
 
 ### 下一步
 
-- 基于 `docs/pilot-15-shots.md` 生成 15 条可直接复制到即梦官网的正式提示词。
-- 建立 pilot 评分表。
-- 建立手动回传的视频命名与记录规范。
+- 生成 15 条可直接复制到即梦官网的正式提示词。
+- 建立简洁评分表。
+- 建立手动回传文件命名规范。
