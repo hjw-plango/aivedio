@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, Material } from "@/lib/api";
 
 export default function ProjectMaterials({ projectId }: { projectId: string }) {
@@ -9,17 +9,17 @@ export default function ProjectMaterials({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setMaterials(await api.listMaterials(projectId));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     refresh();
-  }, [projectId]);
+  }, [refresh]);
 
   const addText = async () => {
     if (!content.trim()) return;

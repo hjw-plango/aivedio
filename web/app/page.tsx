@@ -23,9 +23,13 @@ export default function Home() {
       <section className="card" style={{ marginTop: 16 }}>
         <h3 style={{ marginTop: 0 }}>当前里程碑</h3>
         <ul style={{ lineHeight: 1.8 }}>
-          <li>✅ M0 基础设施 / M1 编排引擎 / M2 4 个 Agent / M3 前端可视化</li>
-          <li>🔧 M4 即梦手动桥与资产管理</li>
-          <li>🔧 M5 端到端 15 镜 pilot 验证</li>
+          <li>✅ M0 基础设施(后端/前端骨架、数据模型、ModelRouter)</li>
+          <li>✅ M1 编排引擎(GraphRun / StepEmitter / SSE)</li>
+          <li>✅ M2 4 个 Agent(研究/编剧/分镜/质检)</li>
+          <li>✅ M3 前端可视化(可见性三档 / 实时事件流 / 重跑)</li>
+          <li>✅ M4 即梦手动桥与资产管理(提示词复制 / 视频回传 / 评分)</li>
+          <li>✅ M5 端到端 15 镜 pilot 验证(3 主题 × 15 shot)</li>
+          <li>⏳ M6 通用平台完善(P1:多方向、配置热加载、对象存储)</li>
         </ul>
       </section>
     </main>

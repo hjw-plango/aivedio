@@ -22,17 +22,19 @@ P0 不强制必须填 key——不填时 `ModelRouter` 自动走 `MockProvider`,
 
 ## 二、后端
 
+在仓库根执行(注意：`venv` 与所有 Python 命令都从仓库根跑，不要 cd 到 `server/`，否则 `python -m server.xxx` 找不到包)：
+
 ```bash
-cd server
-python -m venv ../.venv
-source ../.venv/bin/activate
-pip install -r requirements.txt
+cd <repo-root>          # 例如 /root/junwei/aivedio
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r server/requirements.txt
 
-# 初始化 SQLite
-python -m server.data.init_db
+# 初始化 SQLite（仓库根需要在 PYTHONPATH 里，让 `python -m server.data.init_db` 能 import）
+PYTHONPATH=. python -m server.data.init_db
 
-# 启动 (默认 http://localhost:8000)
-uvicorn server.main:app --reload --host 0.0.0.0 --port 8000
+# 启动后端，默认 http://localhost:8000
+PYTHONPATH=. python -m uvicorn server.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 健康检查:
@@ -58,14 +60,30 @@ npm run dev
 # 访问 http://localhost:3000
 ```
 
-前端通过 `NEXT_PUBLIC_API_BASE` 反向代理到后端,默认 `http://localhost:8000`。
+API 基址解析(`web/lib/api.ts`)：
+
+- **服务端组件 / SSR**：默认走 `http://localhost:8000`，可用 `SERVER_API_BASE` 环境变量覆盖（例如生产部署里 backend 跑在另一台机器）。
+- **浏览器**：默认走相对路径，由 `web/next.config.ts` 的 rewrites 把 `/api/*` 转发到后端；也可以设 `NEXT_PUBLIC_API_BASE` 用绝对 URL。
+
+跑 lint（非交互，不会卡问答）：
+
+```bash
+cd web
+npm run lint:check     # next lint --max-warnings=0 --no-cache
+```
+
+跑端到端可用性 smoke（脚本会同时启 backend + 前端 production server，curl 三个 SSR 页面）：
+
+```bash
+bash scripts/smoke_frontend.sh
+```
 
 ## 四、跑测试
 
 ```bash
-cd <repo root>
+cd <repo-root>
 PYTHONPATH=. .venv/bin/python -m pytest -q
-# 当前 29 passed
+# 后端测试当前 40 passed
 ```
 
 ## 四点五、一键端到端

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, FactCard } from "@/lib/api";
 
 export default function FactsView({ projectId }: { projectId: string }) {
@@ -11,17 +11,17 @@ export default function FactsView({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<string>("");
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setFacts(await api.listFacts(projectId, { q, category }));
     } catch {
       setFacts([]);
     }
-  };
+  }, [projectId, q, category]);
 
   useEffect(() => {
     refresh();
-  }, [projectId, q, category]);
+  }, [refresh]);
 
   const startEdit = (fc: FactCard) => {
     setEditing(fc.id);

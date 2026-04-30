@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ShotAsset } from "@/lib/api";
 
 const TYPES = [
@@ -18,17 +18,17 @@ export default function AssetsView({ projectId }: { projectId: string }) {
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setAssets(
       await api.listAssets(projectId, {
         asset_type: type === "all" ? undefined : type,
         status: status === "all" ? undefined : status,
       }),
     );
-  };
+  }, [projectId, type, status]);
   useEffect(() => {
     refresh();
-  }, [projectId, type, status]);
+  }, [refresh]);
 
   return (
     <main className="container">
