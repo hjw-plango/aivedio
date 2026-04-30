@@ -460,6 +460,42 @@ Compiled successfully
 
 根目录没有 `package.json`，前端命令必须在 `web/` 目录执行。
 
+2026-04-30 真实 API 验证：
+
+```text
+Computinger New API 网关：
+  LLM_BASE_URL=https://www.computinger.com/v1
+  LLM_API_KEY=本地 .env 配置，不提交
+
+ModelRouter smoke：
+  research    gpt-5.5          OK
+  writing     claude-opus-4-7  OK
+  structure   gpt-5.5          OK
+  lightweight gpt-5.4-mini     OK
+
+完整真实 pilot：
+  景德镇制瓷  facts=25 shots=5 jimeng=3 real_only=2
+  苏绣        facts=18 shots=5 jimeng=5 real_only=0
+  川剧变脸    facts=12 shots=5 jimeng=5 real_only=0
+```
+
+真实模型耗时明显长于 mock，完整 pilot 建议：
+
+```powershell
+$env:PILOT_TIMEOUT_SECONDS='900'
+.\.venv\Scripts\python.exe -m scripts.run_pilot
+```
+
+真实 API 接入后已补齐的兼容项：
+
+```text
+1. 模型输出 JSON 外包解释文字时，统一提取 JSON payload。
+2. 只有一个 OpenAI-compatible 中转密钥时，writing 任务复用同一网关调用 Claude 模型。
+3. 模型返回 shot_id="" 时，系统自动生成本地 shot_id。
+4. 分镜引用“真实拍摄范畴 / 不能用 AI 合成替代”等 FactCard 时，自动转真拍镜头。
+5. 红线扫描忽略“禁止:”段和“避开 / 不出现 / 不展示”等否定语境，避免把规避性描述误报为违规。
+```
+
 ## Prompt 索引
 
 ```text
@@ -479,4 +515,3 @@ configs/documentary/rules/red_lines.yaml
 configs/documentary/scoring/failure_tags.yaml
 configs/documentary/scoring/dimensions.yaml
 ```
-

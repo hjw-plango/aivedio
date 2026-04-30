@@ -78,3 +78,34 @@ def test_semantic_wrong_craft_skips_real_footage_shots():
     ]
     hits = _local_red_line_scan(rules, shots, [])
     assert not any(h["rule_id"] == "rl_wrong_craft" for h in hits)
+
+
+def test_red_line_scan_ignores_negative_prompt_constraints():
+    rules = _rules()
+    shots = [
+        {
+            "shot_id": "shot_prompt",
+            "subject": "窑口火光意象",
+            "jimeng_prompt": "观察式纪录片镜头。\n禁止:\n- 把 AI 镜头冒充真实历史影像",
+            "fact_refs": ["fc_x"],
+            "requires_real_footage": False,
+        }
+    ]
+    hits = _local_red_line_scan(rules, shots, [])
+    assert not any(h["rule_id"] == "rl_fake_archive" for h in hits), hits
+
+
+def test_red_line_scan_ignores_negated_inline_trigger():
+    rules = _rules()
+    shots = [
+        {
+            "shot_id": "shot_negated",
+            "subject": "手部整理脸谱",
+            "composition": "手部特写，避开传承人正脸，强调脸谱叠合层次",
+            "jimeng_prompt": "",
+            "fact_refs": ["fc_x"],
+            "requires_real_footage": False,
+        }
+    ]
+    hits = _local_red_line_scan(rules, shots, [])
+    assert not any(h["rule_id"] == "rl_inheritor_face" for h in hits), hits

@@ -12,13 +12,13 @@ Output:
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 from server.agents.base import AgentInput, AgentOutput, BaseAgent, Plan, PlannedSubstep
 from server.engine.config_loader import load_direction
 from server.engine.events import StepEmitter
 from server.engine.router import ModelRouter
+from server.utils.json_extract import extract_json_payload
 
 
 class WriterAgent(BaseAgent):
@@ -114,11 +114,7 @@ class WriterAgent(BaseAgent):
 
 
 def _strip_json_fence(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return text
+    return extract_json_payload(text)
 
 
 def _parse_writer_output(text: str) -> dict[str, Any]:

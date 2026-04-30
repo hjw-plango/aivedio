@@ -31,6 +31,7 @@ from server.engine.events import StepEmitter
 from server.engine.router import ModelRouter
 from server.utils.hashing import text_sha256
 from server.utils.ids import new_id
+from server.utils.json_extract import extract_json_payload
 
 
 class ResearchAgent(BaseAgent):
@@ -130,11 +131,7 @@ class ResearchAgent(BaseAgent):
 
 
 def _strip_json_fence(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return text
+    return extract_json_payload(text)
 
 
 def _parse_extraction(model_text: str, original_text: str) -> dict[str, Any]:

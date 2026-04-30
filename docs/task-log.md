@@ -47,6 +47,17 @@
 - 生成质量较上一版明显改善，标题、来源说明、裸编号残句基本清除，镜头主体更接近真实纪录片素材需求。
 - 仍需在即梦真实视频生成后以人工评分定方向；当前最主要短板是少数 FactCard 引用偏泛化、苏绣意象镜头光线模板偏通用、GPT Image 2 分镜图尚未实接。
 
+### 真实 API 接入
+
+- 已将本地 `.env` 配置为 Computinger New API OpenAI-compatible 网关：`LLM_BASE_URL=https://www.computinger.com/v1`，密钥仅保存在本地 `.env`，不进入 git。
+- 模型列表确认包含 `gpt-5.5`、`claude-opus-4-7`、`claude-opus-4-6`、`gpt-image-2`、`gpt-5.4-mini`。
+- 通过 `ModelRouter` 完成真实模型连通测试：`research=gpt-5.5`、`writing=claude-opus-4-7`、`structure=gpt-5.5`、`lightweight=gpt-5.4-mini` 均返回成功。
+- 增强真实模型兼容：统一提取被解释文字或 Markdown 包裹的 JSON；只有一个 OpenAI-compatible 中转密钥时，`writing` 任务复用同一网关调用 Claude 模型。
+- 修复真实 API 暴露的问题：模型返回 `shot_id=""` 时自动生成本地 id；引用“真实拍摄范畴 / 不能用 AI 合成替代”的 FactCard 时自动转真拍；红线扫描忽略 `禁止:` 段和“避开 / 不出现 / 不展示”等否定语境。
+- `scripts.run_pilot` 增加 `PILOT_TIMEOUT_SECONDS`，默认等待提升到 600 秒，真实完整 pilot 本轮使用 900 秒。
+- 真实完整 pilot 结果：景德镇制瓷 `facts=25 shots=5 jimeng=3 real_only=2`，苏绣 `facts=18 shots=5 jimeng=5 real_only=0`，川剧变脸 `facts=12 shots=5 jimeng=5 real_only=0`。
+- 追加川剧单题复测：`facts=15 shots=5 jimeng=5 real_only=0`，红线误报为 0。
+
 ### 协作记录
 
 - 明确三方协作方式：GitHub 作为唯一代码交换入口，Claude 在 VPS 编码，本地助手做架构把关和 PR 审核。

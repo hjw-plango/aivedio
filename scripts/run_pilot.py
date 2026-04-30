@@ -13,6 +13,7 @@ defined by .env / DB_PATH so users can inspect the result via the web UI.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -26,6 +27,7 @@ TOPICS = [
     ("苏绣", "suxiu.md"),
     ("川剧变脸", "chuanju_bianlian.md"),
 ]
+RUN_TIMEOUT_SECONDS = float(os.getenv("PILOT_TIMEOUT_SECONDS", "600"))
 
 
 def _wait(predicate, timeout=60.0):
@@ -75,7 +77,7 @@ def main() -> int:
                     for s in full["steps"]
                 )
 
-            ok = _wait(all_done, timeout=120.0)
+            ok = _wait(all_done, timeout=RUN_TIMEOUT_SECONDS)
             run_after = client.get(f"/api/runs/{run_id}").json()
             facts = client.get(f"/api/projects/{pid}/facts").json()
             shots = client.get(f"/api/projects/{pid}/shots").json()

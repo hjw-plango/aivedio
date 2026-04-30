@@ -11,13 +11,13 @@ Runs after storyboard generation. Performs:
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 from server.agents.base import AgentInput, AgentOutput, BaseAgent, Plan, PlannedSubstep
 from server.engine.config_loader import load_direction
 from server.engine.events import StepEmitter
 from server.engine.router import ModelRouter
+from server.utils.json_extract import extract_json_payload
 
 
 class ReviewAgent(BaseAgent):
@@ -118,11 +118,7 @@ class ReviewAgent(BaseAgent):
 
 
 def _strip_json_fence(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return text
+    return extract_json_payload(text)
 
 
 def _parse_review(text: str) -> dict[str, list]:
@@ -175,10 +171,12 @@ def _local_red_line_scan(
     hits: list[dict[str, Any]] = []
     haystacks: list[tuple[str, str]] = []
     for shot in shots:
+        jimeng_prompt = _positive_prompt_text(str(shot.get("jimeng_prompt", "")))
         text = " ".join(
             str(shot.get(k, ""))
-            for k in ("subject", "composition", "camera_motion", "lighting", "jimeng_prompt", "image_prompt")
+            for k in ("subject", "composition", "camera_motion", "lighting", "image_prompt")
         )
+        text = f"{text} {jimeng_prompt}".strip()
         haystacks.append((f"shot:{shot.get('shot_id')}", text))
     for n in narration:
         haystacks.append((f"narration:{n.get('shot_seq')}", str(n.get("text", ""))))
@@ -192,10 +190,12 @@ def _local_red_line_scan(
             for shot in shots:
                 if shot.get("requires_real_footage"):
                     continue
+                jimeng_prompt = _positive_prompt_text(str(shot.get("jimeng_prompt", "")))
                 text = " ".join(
                     str(shot.get(k, ""))
-                    for k in ("subject", "jimeng_prompt", "image_prompt")
+                    for k in ("subject", "image_prompt")
                 )
+                text = f"{text} {jimeng_prompt}".strip()
                 mentions_step = any(kw in text for kw in _CRAFT_STEP_KEYWORDS)
                 refs = shot.get("fact_refs") or []
                 if mentions_step and not refs:
@@ -213,7 +213,7 @@ def _local_red_line_scan(
             for trig in triggers:
                 if not isinstance(trig, str):
                     continue
-                if trig in text:
+                if _contains_positive_trigger(text, trig):
                     hits.append(
                         {
                             "rule_id": rule_id,
@@ -224,6 +224,36 @@ def _local_red_line_scan(
                     )
                     break
     return hits
+
+
+_NEGATION_PREFIXES = ("避开", "避免", "不出现", "不展示", "不露", "不要", "禁止", "不能", "不得", "无")
+
+
+def _contains_positive_trigger(text: str, trigger: str) -> bool:
+    """Return True only when a red-line trigger is used positively.
+
+    Phrases like "避开传承人正脸" and "不出现历史影像" are constraints, not an
+    attempt to generate forbidden content.
+    """
+    start = 0
+    while True:
+        idx = text.find(trigger, start)
+        if idx < 0:
+            return False
+        prefix = text[max(0, idx - 12) : idx]
+        if not any(neg in prefix for neg in _NEGATION_PREFIXES):
+            return True
+        start = idx + len(trigger)
+
+
+def _positive_prompt_text(prompt: str) -> str:
+    """Keep only positive visual instructions from a Jimeng prompt.
+
+    The prompt template contains a "禁止:" block with red-line trigger words
+    such as "历史影像". Those negative constraints must not be counted as the
+    shot attempting to generate forbidden content.
+    """
+    return prompt.split("\n禁止:", 1)[0]
 
 
 def _consolidate(primary: dict, secondary: dict, local_hits: list[dict]) -> dict:

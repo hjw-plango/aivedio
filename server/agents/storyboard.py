@@ -28,6 +28,7 @@ from server.engine.config_loader import load_direction
 from server.engine.events import StepEmitter
 from server.engine.router import ModelRouter
 from server.utils.ids import new_id
+from server.utils.json_extract import extract_json_payload
 
 
 SHOT_COUNT = 5
@@ -105,8 +106,7 @@ class StoryboardAgent(BaseAgent):
 
         # Generate Jimeng video prompts per shot (skip portrait_interview / ritual_real).
         for idx, shot in enumerate(shots, start=1):
-            shot.setdefault("sequence", idx)
-            shot.setdefault("shot_id", new_id("shot"))
+            _normalize_model_shot(shot, idx, fact_cards)
             if shot.get("requires_real_footage"):
                 shot["jimeng_prompt"] = ""
                 shot["image_prompt"] = ""
@@ -157,11 +157,7 @@ class StoryboardAgent(BaseAgent):
 
 
 def _strip_json_fence(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return text
+    return extract_json_payload(text)
 
 
 def _parse_shots(text: str) -> list[dict[str, Any]]:
@@ -188,6 +184,55 @@ def _parse_issues(text: str) -> list[dict[str, Any]]:
     if isinstance(data, dict) and isinstance(data.get("issues"), list):
         return data["issues"]
     return []
+
+
+_TRUE_VALUES = {"true", "1", "yes", "y", "是", "对", "需要", "required"}
+_REAL_ONLY_FACT_PHRASES = (
+    "真实拍摄范畴",
+    "不能用AI合成替代",
+    "不能用 AI 合成替代",
+    "必须真拍",
+    "不生成 AI 视频",
+    "不生成AI视频",
+    "人工拍摄",
+    "授权素材",
+)
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_VALUES
+    return bool(value)
+
+
+def _normalize_model_shot(shot: dict[str, Any], idx: int, fact_cards: list[dict[str, Any]]) -> None:
+    """Normalize model-authored shot fields before prompt generation.
+
+    Real models often follow "shot_id: leave blank" literally and may return
+    string booleans. They can also reference FactCards that explicitly say a
+    subject must be real footage. Normalize those cases before persistence.
+    """
+    if not shot.get("sequence"):
+        shot["sequence"] = idx
+    if not shot.get("shot_id"):
+        shot["shot_id"] = new_id("shot")
+    shot["requires_real_footage"] = _coerce_bool(shot.get("requires_real_footage"))
+    if _references_real_only_fact(shot, fact_cards):
+        shot["requires_real_footage"] = True
+
+
+def _references_real_only_fact(shot: dict[str, Any], fact_cards: list[dict[str, Any]]) -> bool:
+    refs = set(shot.get("fact_refs") or [])
+    if not refs:
+        return False
+    fact_map = {fc.get("fact_id"): fc for fc in fact_cards}
+    for ref in refs:
+        content = str((fact_map.get(ref) or {}).get("content", ""))
+        if any(phrase in content for phrase in _REAL_ONLY_FACT_PHRASES):
+            return True
+    return False
 
 
 _TYPE_TIPS = {

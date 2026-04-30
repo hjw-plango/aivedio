@@ -178,6 +178,12 @@ class ModelRouter:
             primary = MockProvider()
         if settings.anthropic_api_key:
             secondary = AnthropicProvider(settings.anthropic_base_url, settings.anthropic_api_key)
+        elif settings.llm_api_key:
+            # Many relay stations expose Claude models through the same
+            # OpenAI-compatible /v1/chat/completions route. Reuse primary so
+            # writing tasks do not silently fall back to MockProvider when the
+            # user only configured one relay key.
+            secondary = primary
         else:
             secondary = MockProvider()
         return cls(primary=primary, secondary=secondary)
