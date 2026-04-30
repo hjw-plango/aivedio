@@ -35,6 +35,20 @@
 
 ### 已完成
 
+- 拉取远端最新 `main`，当前版本为 `01eedb5 Merge pull request #9 from hjw-plango/fix/fallback-quality`。
+- 按生成效果和功能完成度优先做本地审查：FactCard 清洗、5 镜分镜契约、主题感知 fallback、川剧真拍镜头转换均已生效。
+- 本地验证通过：后端 `45 passed`，前端 `npm run lint` 无警告错误，前端 `npm run build` 编译成功。
+- 重新执行 3 主题 pilot：景德镇制瓷 `facts=13 shots=5 jimeng=5 real_only=0`，苏绣 `facts=12 shots=5 jimeng=5 real_only=0`，川剧变脸 `facts=11 shots=5 jimeng=4 real_only=1`。
+- 新增 `docs/workflow.md`，集中记录当前端到端工作流、模型分工、Agent 输入输出、实际提示词位置、即梦手动桥和已知短板，避免流程说明散落重复。
+
+### 审查结论
+
+- 当前版本已经可以进入即梦官网人工实测阶段，自动化链路能稳定产出 15 个核心镜头，其中 14 条即梦提示词、1 条真拍镜头。
+- 生成质量较上一版明显改善，标题、来源说明、裸编号残句基本清除，镜头主体更接近真实纪录片素材需求。
+- 仍需在即梦真实视频生成后以人工评分定方向；当前最主要短板是少数 FactCard 引用偏泛化、苏绣意象镜头光线模板偏通用、GPT Image 2 分镜图尚未实接。
+
+### 协作记录
+
 - 明确三方协作方式：GitHub 作为唯一代码交换入口，Claude 在 VPS 编码，本地助手做架构把关和 PR 审核。
 - 新增 `docs/collaboration.md`，记录分支命名、Claude 交付包、本地审核重点和首个 M0 任务指令。
 - 新增 `.github/pull_request_template.md`，统一 PR 范围、验证输出和 P0 边界自检。
