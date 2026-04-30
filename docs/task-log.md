@@ -23,11 +23,11 @@
 
 ### 端到端 Pilot 跑通
 
-3 主题 × 15 镜：景德镇制瓷 / 苏绣 / 川剧变脸 全部 success，各 15 即梦提示词。
+3 主题 × 5 核心镜头：景德镇制瓷 / 苏绣 / 川剧变脸 全部 success，共 15 条即梦提示词（按 documentary-pilot.md 契约：establishing / craft_close / material_close / silhouette / imagery 各 1）。
 
 ### 待人工验收
 
-- 用户复制 45 条即梦提示词到即梦官网，人工生成视频。
+- 用户复制 15 条即梦提示词到即梦官网，人工生成视频。
 - 视频回传到 /projects/{id}/shots 页面，填入 5 分制评分 + 失败标签。
 - 按 docs/pilot-result.md 表格汇总，判定方向是否进入 P1。
 

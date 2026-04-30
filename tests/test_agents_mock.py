@@ -74,10 +74,11 @@ def test_full_pipeline_mock_mode_produces_real_artifacts():
             shots = session.query(Shot).filter(Shot.project_id == pid).all()
             assets = session.query(ShotAsset).filter(ShotAsset.project_id == pid).all()
         assert len(facts) >= 3, f"expected >=3 facts, got {len(facts)}"
-        assert len(shots) == 15, f"expected exactly 15 shots, got {len(shots)}"
+        assert len(shots) == 5, f"expected 5 core shots, got {len(shots)}"
 
         jimeng_assets = [a for a in assets if a.asset_type == "jimeng_video_prompt"]
-        assert len(jimeng_assets) >= 10, f"expected >=10 jimeng prompts, got {len(jimeng_assets)}"
+        # 5 core shots, all AI-friendly for porcelain → expect 5 prompts.
+        assert len(jimeng_assets) >= 4, f"expected >=4 jimeng prompts, got {len(jimeng_assets)}"
         for ja in jimeng_assets[:3]:
             assert "纪录片" in ja.prompt or "观察式" in ja.prompt
             assert ja.rights["source_type"] == "ai_generated"
