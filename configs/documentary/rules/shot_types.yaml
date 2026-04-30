@@ -44,9 +44,9 @@ types:
       - 固定机位
 
   - id: portrait_interview
-    label: 传承人正脸采访
+    label: 真实传承人采访
     ai_friendly: false
-    description: 传承人面部特写、口述。**必须真拍**。
+    description: 具体真实传承人的采访、口述、身份化正脸。**必须真拍或使用授权素材**。
     typical_motion:
       - 固定机位
 

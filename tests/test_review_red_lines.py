@@ -16,7 +16,7 @@ def test_substring_red_line_inheritor_face():
     shots = [
         {
             "shot_id": "shot1",
-            "subject": "传承人正脸特写",
+            "subject": "真实传承人正脸采访",
             "jimeng_prompt": "",
             "fact_refs": ["fc_x"],
         }
@@ -101,7 +101,7 @@ def test_red_line_scan_ignores_negated_inline_trigger():
         {
             "shot_id": "shot_negated",
             "subject": "手部整理脸谱",
-            "composition": "手部特写，避开传承人正脸，强调脸谱叠合层次",
+            "composition": "手部特写，避开真实传承人正脸，强调脸谱叠合层次",
             "jimeng_prompt": "",
             "fact_refs": ["fc_x"],
             "requires_real_footage": False,

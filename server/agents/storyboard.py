@@ -218,9 +218,11 @@ def _normalize_model_shot(shot: dict[str, Any], idx: int, fact_cards: list[dict[
         shot["sequence"] = idx
     if not shot.get("shot_id"):
         shot["shot_id"] = new_id("shot")
-    shot["requires_real_footage"] = _coerce_bool(shot.get("requires_real_footage"))
-    if _references_real_only_fact(shot, fact_cards):
-        shot["requires_real_footage"] = True
+    requests_real = _shot_requests_real_footage(shot)
+    shot["requires_real_footage"] = bool(
+        requests_real
+        and (_coerce_bool(shot.get("requires_real_footage")) or _references_real_only_fact(shot, fact_cards))
+    )
 
 
 def _references_real_only_fact(shot: dict[str, Any], fact_cards: list[dict[str, Any]]) -> bool:
@@ -233,6 +235,26 @@ def _references_real_only_fact(shot: dict[str, Any], fact_cards: list[dict[str, 
         if any(phrase in content for phrase in _REAL_ONLY_FACT_PHRASES):
             return True
     return False
+
+
+_REAL_REQUEST_PHRASES = (
+    "采访",
+    "口述",
+    "实录",
+    "真实演出",
+    "现场演出",
+    "真实仪式",
+    "授权档案",
+    "真实档案",
+)
+
+
+def _shot_requests_real_footage(shot: dict[str, Any]) -> bool:
+    text = " ".join(
+        str(shot.get(k, ""))
+        for k in ("shot_type", "subject", "composition", "camera_motion", "lighting")
+    )
+    return any(phrase in text for phrase in _REAL_REQUEST_PHRASES)
 
 
 _TYPE_TIPS = {
@@ -278,7 +300,7 @@ def _build_image_prompt(shot: dict[str, Any]) -> str:
     return (
         f"纪录片分镜参考图,{shot.get('shot_type','')}, 主体: {shot.get('subject','')}; "
         f"构图: {shot.get('composition','')}; 光线: {shot.get('lighting','')}; "
-        "真实材质,低饱和,自然光,无 AI 合成感人脸。"
+        "真实材质,低饱和,自然光,人物可为非特定 AI 生成角色,不得冒充真实传承人。"
     )
 
 
@@ -318,11 +340,11 @@ _TOPIC_PROFILES: list[dict[str, Any]] = [
         "establishing_subject": "戏台后台空镜,旧木桌、脸谱、戏服与暖色镜灯",
         "craft_close_subject": "画笔在脸谱纸样上落色,色块层叠,不出现真人脸部",
         "material_close_subject": "戏服刺绣、布料与肩甲在指间翻动的纹理特写",
-        "silhouette_subject": "舞台背影剪影,演员甩袖瞬间,不展示可识别正脸",
+        "silhouette_subject": "舞台侧光中的非特定演员剪影或侧脸,甩袖瞬间,不冒充真实演出记录",
         "imagery_subject": "面具、袖口、灯光快速切换的象征性意象,不声称真实演出",
         # opera materials commonly include real performances / interviews —
         # mark silhouette as needing real footage when brief implies live.
-        "real_footage_signals": ("演出", "采访", "口述", "正脸", "现场", "实录"),
+        "real_footage_signals": ("真实演出", "现场演出", "采访", "口述史", "口述", "实录", "授权档案"),
     },
     {
         "id": "generic",
@@ -351,12 +373,22 @@ def _detect_profile(brief: str, fact_cards: list[dict[str, Any]]) -> dict[str, A
     return best
 
 
-_REAL_FOOTAGE_SIGNALS_GLOBAL = ("传承人正脸", "传承人采访", "口述史", "现场演出", "真实演出", "实录")
+_REAL_FOOTAGE_SIGNALS_GLOBAL = (
+    "真实传承人正脸",
+    "具体传承人肖像",
+    "传承人采访",
+    "传承人口述",
+    "口述史",
+    "现场演出",
+    "真实演出",
+    "实录",
+    "授权档案",
+)
 
 
-def _needs_real_footage(profile: dict[str, Any], shot_type: str, haystack: str) -> bool:
+def _needs_real_footage(profile: dict[str, Any], shot_type: str, brief: str, haystack: str) -> bool:
     """A specific (profile × shot_type) requires real footage when the
-    haystack (brief + fact_cards text) mentions live/portrait/interview signals.
+    user brief mentions live/portrait/interview signals.
 
     Only the silhouette slot converts. Rationale (per docs/documentary-pilot.md):
     - establishing / craft_close / material_close are explicitly AI-friendly
@@ -366,10 +398,12 @@ def _needs_real_footage(profile: dict[str, Any], shot_type: str, haystack: str) 
       record, so it stays AI by design.
     - silhouette is the only category that overlaps human likeness, so when
       the brief signals real performers/interviews we promote it to a
-      portrait_interview shot the user must capture in person.
+      portrait_interview shot the user must capture in person. FactCards may
+      contain cautionary boundary notes, so they should not convert a generic
+      AI-friendly silhouette on their own.
     """
     signals = list(profile.get("real_footage_signals", ())) + list(_REAL_FOOTAGE_SIGNALS_GLOBAL)
-    if not any(s in haystack for s in signals):
+    if not any(s in brief for s in signals):
         return False
     return shot_type == "silhouette"
 
@@ -378,6 +412,14 @@ def _pick_fact_refs(profile: dict[str, Any], shot_type: str, fact_cards: list[di
     """Choose up to 2 fact_card IDs whose content best matches the shot type."""
     if not fact_cards:
         return []
+    if shot_type not in {"portrait_interview", "ritual_real"}:
+        fact_cards = [
+            fc
+            for fc in fact_cards
+            if not any(phrase in str(fc.get("content", "")) for phrase in _REAL_ONLY_FACT_PHRASES)
+        ]
+        if not fact_cards:
+            return []
     priorities = {
         "craft_close": ("craft_step",),
         "material_close": ("material", "tool"),
@@ -437,7 +479,7 @@ def _fallback_shots(
             "silhouette": "中景,逆光,主体居中",
             "imagery": "中近景,主体偏左,留呼吸空间",
         }.get(t, "中景")
-        real = _needs_real_footage(profile, t, haystack)
+        real = _needs_real_footage(profile, t, brief or "", haystack)
         if real and t == "silhouette":
             # convert the slot semantically — the shot now stages a real-footage
             # portrait/interview, so its subject should reflect that.

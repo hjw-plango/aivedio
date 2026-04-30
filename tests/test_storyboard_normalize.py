@@ -15,6 +15,7 @@ def test_normalize_model_shot_promotes_real_only_fact_refs():
     shot = {
         "shot_id": "",
         "requires_real_footage": False,
+        "subject": "真实传承人采访镜头",
         "fact_refs": ["fc_real"],
     }
     facts = [
@@ -25,4 +26,3 @@ def test_normalize_model_shot_promotes_real_only_fact_refs():
     ]
     _normalize_model_shot(shot, 1, facts)
     assert shot["requires_real_footage"] is True
-

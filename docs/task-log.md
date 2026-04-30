@@ -57,6 +57,7 @@
 - `scripts.run_pilot` 增加 `PILOT_TIMEOUT_SECONDS`，默认等待提升到 600 秒，真实完整 pilot 本轮使用 900 秒。
 - 真实完整 pilot 结果：景德镇制瓷 `facts=25 shots=5 jimeng=3 real_only=2`，苏绣 `facts=18 shots=5 jimeng=5 real_only=0`，川剧变脸 `facts=12 shots=5 jimeng=5 real_only=0`。
 - 追加川剧单题复测：`facts=15 shots=5 jimeng=5 real_only=0`，红线误报为 0。
+- 根据产品定位放宽人物规则：AI 非遗纪录片允许非特定人物、表演者、历史复原人物和非身份化面部；限制只保留在伪造真实传承人身份、真实采访、真实口述、真实演出实录、真实档案上。
 
 ### 协作记录
 

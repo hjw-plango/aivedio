@@ -5,9 +5,8 @@ artifacts even without an LLM key:
   - FactCard.content has no markdown chrome (#, >, "pilot 资料", "来源:", bare "1.")
   - Shot.subject is non-empty, not a single FactCard sentence, not punctuation-only
   - Each project has exactly the 5 canonical shot types, each appears once
-  - For brief/material that contains "传承人正脸 / 采访 / 口述史" (川剧 case) the
-    silhouette slot becomes portrait_interview with requires_real_footage=true and
-    its jimeng_video_prompt is empty (we never ask Jimeng to fake real footage)
+  - Boundary notes in materials do not force generic AI shots into real footage;
+    only a requested interview / real-record shot should become real footage.
   - For neutral subjects (景德镇制瓷 / 苏绣) all 5 shots are AI-friendly (no real_footage)
   - Generated jimeng_video_prompt strings carry NONE of the markdown / metadata
     leaks the previous version was producing
@@ -147,23 +146,17 @@ def test_each_topic_has_exactly_5_canonical_shot_types():
                 )
 
 
-def test_chuanju_silhouette_becomes_portrait_interview():
+def test_chuanju_keeps_non_specific_actor_shots_ai_friendly():
     from server.main import create_app
 
     with TestClient(create_app()) as client:
         result = _run_topic(client, "川剧变脸", "chuanju_bianlian.md")
         shots = result["shots"]
-        portrait = [s for s in shots if s["requires_real_footage"]]
-        assert len(portrait) >= 1, (
-            "川剧 brief mentions 传承人正脸 / 口述史 — expected ≥1 real-footage shot, "
-            f"got types={[s['shot_type'] for s in shots]}"
-        )
-        for shot in portrait:
-            # real-footage shots must NOT carry a jimeng prompt
-            jimengs = [a for a in shot["assets"] if a["asset_type"] == "jimeng_video_prompt"]
-            assert not jimengs, (
-                f"real-footage shot {shot['id']} should not have jimeng prompt"
-            )
+        real = [s for s in shots if s["requires_real_footage"]]
+        assert not real, f"non-specific川剧 AI 镜头不应被边界说明误转真拍: {real}"
+        for shot in shots:
+            prompts = [a for a in shot["assets"] if a["asset_type"] == "jimeng_video_prompt"]
+            assert prompts, f"AI-friendly shot {shot['id']} should have jimeng prompt"
 
 
 def test_neutral_topics_keep_all_shots_ai_friendly():
