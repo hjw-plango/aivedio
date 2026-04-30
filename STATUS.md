@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-**P0（M0~M5）已全部完成并合并到 main**，可直接用浏览器跑通完整非遗纪录片 15 镜 pilot。
+**P0（M0~M5）已全部完成并合并到 main**，可直接用浏览器跑通完整非遗纪录片 pilot：3 主题 × 5 核心镜头 = 15 条即梦提示词。
 
 | 里程碑 | 内容 | PR | 状态 |
 |--------|------|-----|------|
@@ -53,7 +53,7 @@ PYTHONPATH=. .venv/bin/python -m pytest -q
 P0 流程图自动化部分到此为止。下一步**必须由人完成**：
 
 1. 在 web UI 创建项目（或直接用 `scripts/run_pilot.py` 已经创建好的 3 个）
-2. 进入 `/projects/{id}/shots`，**复制 45 条即梦提示词**
+2. 进入 `/projects/{id}/shots`，复制每个项目的即梦提示词（每项目 5 核心镜头：establishing / craft_close / material_close / silhouette / imagery；如果 brief 命中"传承人正脸/采访/口述"等信号，silhouette 槽位会切换为真拍 `portrait_interview`，那一条不生成即梦提示词，按文档应人工拍摄替代）
 3. 在即梦官网手动生成视频，下载 mp4
 4. 回到 `/projects/{id}/shots`，**点上传**回传视频
 5. 填 5 分制评分 + 失败标签 + 备注

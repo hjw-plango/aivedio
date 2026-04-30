@@ -5,6 +5,13 @@ Persists Shot rows in DB and creates draft ShotAsset entries:
   - storyboard_prompt (text)
   - storyboard_image (placeholder; M3 lets user replace)
   - jimeng_video_prompt (text, for manual Jimeng)
+
+Pilot contract (docs/documentary-pilot.md):
+  Each project produces SHOT_COUNT = 5 core shots covering 5 standard
+  shot types: establishing / craft_close / material_close / silhouette /
+  imagery. With 3 heritage topics this yields 15 prompts total.
+
+Fallback (no LLM key) honours the same contract — see _fallback_shots.
 """
 
 from __future__ import annotations
@@ -21,6 +28,10 @@ from server.engine.config_loader import load_direction
 from server.engine.events import StepEmitter
 from server.engine.router import ModelRouter
 from server.utils.ids import new_id
+
+
+SHOT_COUNT = 5
+CORE_SHOT_TYPES = ("establishing", "craft_close", "material_close", "silhouette", "imagery")
 
 
 class StoryboardAgent(BaseAgent):
@@ -58,14 +69,23 @@ class StoryboardAgent(BaseAgent):
             emitter.finish("no script")
             return AgentOutput(summary="no script", data={"shots": []})
 
-        emitter.progress(f"基于 {len(script)} 场剧本拆 15 个镜头", visibility="detail")
+        brief = (
+            agent_input.payload.get("brief")
+            or agent_input.upstream.get("brief", "")
+            or ""
+        )
+        emitter.progress(
+            f"基于 {len(script)} 场剧本拆 {SHOT_COUNT} 个核心镜头", visibility="detail"
+        )
         prompt = (
             sb_prompt
             + "\n\n## 剧本\n"
             + json.dumps(script, ensure_ascii=False, indent=2)[:6000]
             + "\n\n## 旁白\n"
             + json.dumps(narration, ensure_ascii=False)[:2000]
-            + f"\n\n输出 15 条镜头分镜表,JSON 数组。"
+            + f"\n\n输出 {SHOT_COUNT} 条核心镜头分镜表(每种 shot_type 各 1: "
+            + ", ".join(CORE_SHOT_TYPES)
+            + "),JSON 数组。"
         )
 
         emitter.tool_call("model.structure.shot_list", "")
@@ -80,8 +100,8 @@ class StoryboardAgent(BaseAgent):
         shots = _parse_shots(result.text)
         if not shots:
             emitter.progress("模型未返回结构化分镜,触发本地兜底", visibility="detail")
-            shots = _fallback_shots(script, narration, fact_cards)
-        shots = shots[:15]
+            shots = _fallback_shots(brief, fact_cards, script, narration)
+        shots = shots[:SHOT_COUNT]
 
         # Generate Jimeng video prompts per shot (skip portrait_interview / ritual_real).
         for idx, shot in enumerate(shots, start=1):
@@ -204,6 +224,8 @@ def _build_jimeng_prompt(template: str, shot: dict[str, Any], fact_cards: list[d
     type_tip = _TYPE_TIPS.get(shot.get("shot_type", ""), "")
     extra = f"\n类型要点:{type_tip}" if type_tip else ""
     body = body.replace("【FactCard 引用的工艺细节,必须直接复述,不演绎】", fact_text or "")
+    # collapse runs of blank lines so the copy-paste payload stays tight
+    body = re.sub(r"\n{3,}", "\n\n", body)
     return body.strip() + extra
 
 
@@ -215,58 +237,187 @@ def _build_image_prompt(shot: dict[str, Any]) -> str:
     )
 
 
-def _fallback_shots(script: list[dict[str, Any]], narration: list[dict[str, Any]], fact_cards: list[dict[str, Any]]):
-    types = ["establishing", "craft_close", "material_close", "silhouette", "imagery"]
+# --- topic detection + per-shot-type templates ---
+
+_TOPIC_PROFILES: list[dict[str, Any]] = [
+    {
+        "id": "porcelain",
+        "label": "瓷器",
+        "keywords": ("瓷", "窑", "拉坯", "修坯", "釉", "青花", "陶轮", "瓷土", "高岭"),
+        "tools": ("修坯刀", "毛笔", "陶轮"),
+        "materials": ("瓷土", "釉料", "钴蓝料"),
+        "establishing_subject": "清晨老作坊外景,旧砖墙、木架、陶轮与窑口烟气",
+        "craft_close_subject": "工匠双手在陶轮上拉坯,湿润瓷泥在指间成形,泥水与细微颤动可见",
+        "material_close_subject": "桌面瓷土与釉料颗粒的微距,粉尘飘落,纹理粗糙真实",
+        "silhouette_subject": "工坊逆光中工匠半身剪影,只见双手与轮转动作",
+        "imagery_subject": "窑口火光与烟气意象,器物轮廓在余烬中若隐若现",
+    },
+    {
+        "id": "embroidery",
+        "label": "刺绣",
+        "keywords": ("绣", "丝线", "针脚", "绷架", "苏绣", "湘绣", "绸缎", "纹样"),
+        "tools": ("绣针", "绷架", "剪刀"),
+        "materials": ("丝线", "绸缎", "底料"),
+        "establishing_subject": "窗边老绣坊空镜,布面、线轴、木绷架与旧剪刀静置",
+        "craft_close_subject": "绣针穿过绸缎,丝线反光,手部动作缓慢,针脚细密",
+        "material_close_subject": "不同色阶的丝线被手指分开,纤维与光泽的微距细节",
+        "silhouette_subject": "绣娘坐姿背影,头微低,只见双手与肩部轮廓",
+        "imagery_subject": "花鸟纹样在针脚中逐渐显现,克制的纹样动效意象",
+    },
+    {
+        "id": "opera",
+        "label": "戏曲",
+        "keywords": ("戏", "脸谱", "变脸", "戏服", "唱腔", "锣鼓", "戏台", "演员"),
+        "tools": ("画笔", "脸谱"),
+        "materials": ("脸谱", "戏服", "丝线"),
+        "establishing_subject": "戏台后台空镜,旧木桌、脸谱、戏服与暖色镜灯",
+        "craft_close_subject": "画笔在脸谱纸样上落色,色块层叠,不出现真人脸部",
+        "material_close_subject": "戏服刺绣、布料与肩甲在指间翻动的纹理特写",
+        "silhouette_subject": "舞台背影剪影,演员甩袖瞬间,不展示可识别正脸",
+        "imagery_subject": "面具、袖口、灯光快速切换的象征性意象,不声称真实演出",
+        # opera materials commonly include real performances / interviews —
+        # mark silhouette as needing real footage when brief implies live.
+        "real_footage_signals": ("演出", "采访", "口述", "正脸", "现场", "实录"),
+    },
+    {
+        "id": "generic",
+        "label": "非遗",
+        "keywords": (),
+        "tools": (),
+        "materials": (),
+        "establishing_subject": "传统工坊外景空镜,自然光,旧木结构与工具静置",
+        "craft_close_subject": "工匠手部在工具上的特写动作,材料表面纹理可见",
+        "material_close_subject": "原料与工具的微距,真实材质与磨损细节",
+        "silhouette_subject": "逆光剪影,人物只见轮廓,不展示面部",
+        "imagery_subject": "材料、光线与时间感构成的意象镜头,不冒充真实档案",
+    },
+]
+
+
+def _detect_profile(brief: str, fact_cards: list[dict[str, Any]]) -> dict[str, Any]:
+    haystack = brief + " " + " ".join(fc.get("content", "") for fc in (fact_cards or [])[:30])
+    best = _TOPIC_PROFILES[-1]  # generic default
+    best_score = 0
+    for prof in _TOPIC_PROFILES[:-1]:
+        score = sum(haystack.count(k) for k in prof["keywords"])
+        if score > best_score:
+            best_score = score
+            best = prof
+    return best
+
+
+_REAL_FOOTAGE_SIGNALS_GLOBAL = ("传承人正脸", "传承人采访", "口述史", "现场演出", "真实演出", "实录")
+
+
+def _needs_real_footage(profile: dict[str, Any], shot_type: str, haystack: str) -> bool:
+    """A specific (profile × shot_type) requires real footage when the
+    haystack (brief + fact_cards text) mentions live/portrait/interview signals.
+
+    Only the silhouette slot converts. Rationale (per docs/documentary-pilot.md):
+    - establishing / craft_close / material_close are explicitly AI-friendly
+      and must stay AI to keep the pilot quota meaningful (we cannot validate
+      AI's value if every shot is real).
+    - imagery is symbolic/abstract and should never be misread as a real
+      record, so it stays AI by design.
+    - silhouette is the only category that overlaps human likeness, so when
+      the brief signals real performers/interviews we promote it to a
+      portrait_interview shot the user must capture in person.
+    """
+    signals = list(profile.get("real_footage_signals", ())) + list(_REAL_FOOTAGE_SIGNALS_GLOBAL)
+    if not any(s in haystack for s in signals):
+        return False
+    return shot_type == "silhouette"
+
+
+def _pick_fact_refs(profile: dict[str, Any], shot_type: str, fact_cards: list[dict[str, Any]]) -> list[str]:
+    """Choose up to 2 fact_card IDs whose content best matches the shot type."""
+    if not fact_cards:
+        return []
+    priorities = {
+        "craft_close": ("craft_step",),
+        "material_close": ("material", "tool"),
+        "establishing": ("location", "history"),
+        "silhouette": ("persona", "history"),
+        "imagery": ("folklore", "history"),
+    }.get(shot_type, ())
+    by_priority = [
+        fc for fc in fact_cards if fc.get("category") in priorities and fc.get("fact_id")
+    ]
+    if not by_priority:
+        # fall back to keyword match against profile materials/tools
+        keywords = tuple(profile.get("tools", ())) + tuple(profile.get("materials", ()))
+        by_priority = [
+            fc for fc in fact_cards
+            if fc.get("fact_id") and any(k in (fc.get("content") or "") for k in keywords)
+        ]
+    if not by_priority:
+        by_priority = [fc for fc in fact_cards if fc.get("fact_id")][:2]
+    return [fc["fact_id"] for fc in by_priority[:2] if fc.get("fact_id")]
+
+
+def _fallback_shots(
+    brief: str,
+    fact_cards: list[dict[str, Any]],
+    script: list[dict[str, Any]] | None = None,
+    narration: list[dict[str, Any]] | None = None,
+):
+    """Produce SHOT_COUNT core shots covering the 5 canonical shot types.
+
+    Subject/composition/camera/lighting come from a topic-aware template
+    (porcelain / embroidery / opera / generic), NOT from raw FactCard
+    sentences. FactCards are referenced via shot.fact_refs so the prompt
+    builder can splice the relevant craft step into the Jimeng prompt
+    without leaking metadata.
+    """
+    profile = _detect_profile(brief or "", fact_cards or [])
+    haystack = (brief or "") + " " + " ".join(
+        fc.get("content", "") for fc in (fact_cards or [])[:30]
+    )
+    topic_label = profile.get("label", "非遗")
+    narration_seq = {n.get("shot_seq"): n for n in (narration or []) if isinstance(n, dict)}
+
     shots: list[dict[str, Any]] = []
-    seq = 0
-    nar_idx = 0
-    for scene in script[:5]:
-        for j in range(3):
-            seq += 1
-            t = types[(seq - 1) % len(types)]
-            beats = scene.get("beats") or []
-            beat = beats[j % max(1, len(beats))] if beats else {}
-            shot = {
-                "shot_id": new_id("shot"),
-                "scene_id": scene.get("scene_id"),
-                "sequence": seq,
-                "shot_type": t,
-                "subject": (beat.get("description") if isinstance(beat, dict) else "") or "工坊场景",
-                "composition": "中近景,主体偏左",
-                "camera_motion": "缓慢推近" if t == "establishing" else "固定机位",
-                "lighting": "自然光",
-                "duration_estimate": 5.0,
-                "narration_ref": narration[nar_idx].get("shot_seq") if nar_idx < len(narration) else None,
-                "requires_real_footage": False,
-                "fact_refs": (beat.get("fact_refs") if isinstance(beat, dict) else None) or [],
-                "topic": "非遗",
-            }
-            shots.append(shot)
-            nar_idx += 1
-            if seq >= 15:
-                break
-        if seq >= 15:
-            break
-    while len(shots) < 15 and fact_cards:
-        seq += 1
-        fc = fact_cards[(seq - 1) % len(fact_cards)]
+    for idx, t in enumerate(CORE_SHOT_TYPES, start=1):
+        subject = profile.get(f"{t}_subject", "")
+        camera = (
+            "缓慢推近" if t == "establishing"
+            else "缓慢平移" if t == "imagery"
+            else "固定机位"
+        )
+        lighting = "自然光" if t != "imagery" else "自然光配合微弱火光"
+        composition = {
+            "establishing": "中远景,前景留白",
+            "craft_close": "特写,主体居中,景深浅",
+            "material_close": "微距,光线从侧面打入",
+            "silhouette": "中景,逆光,主体居中",
+            "imagery": "中近景,主体偏左,留呼吸空间",
+        }.get(t, "中景")
+        real = _needs_real_footage(profile, t, haystack)
+        if real and t == "silhouette":
+            # convert the slot semantically — the shot now stages a real-footage
+            # portrait/interview, so its subject should reflect that.
+            subject = f"传承人采访或现场演出实录(必须真拍,不生成 AI 视频)"
+            composition = "中景,自然光下的正脸或现场"
+            camera = "固定机位,长焦"
+            lighting = "现场光"
         shots.append(
             {
                 "shot_id": new_id("shot"),
-                "scene_id": "scene_x",
-                "sequence": seq,
-                "shot_type": types[(seq - 1) % len(types)],
-                "subject": fc.get("content", "")[:60],
-                "composition": "中景",
-                "camera_motion": "固定机位",
-                "lighting": "自然光",
-                "duration_estimate": 5.0,
-                "requires_real_footage": False,
-                "fact_refs": [fc.get("fact_id")],
-                "topic": "非遗",
+                "scene_id": (script[0].get("scene_id") if script else None) or "scene_1",
+                "sequence": idx,
+                "shot_type": t if not real else "portrait_interview",
+                "subject": subject,
+                "composition": composition,
+                "camera_motion": camera,
+                "lighting": lighting,
+                "duration_estimate": 5.0 if t != "establishing" else 7.0,
+                "narration_ref": narration_seq.get(idx, {}).get("shot_seq") if narration_seq else None,
+                "requires_real_footage": bool(real),
+                "fact_refs": _pick_fact_refs(profile, t, fact_cards or []),
+                "topic": topic_label,
             }
         )
-    return shots[:15]
+    return shots
 
 
 def _persist_shots(project_id: str, shots: list[dict[str, Any]]) -> dict[str, Any]:

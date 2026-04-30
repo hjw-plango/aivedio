@@ -184,12 +184,98 @@ def _parse_extraction(model_text: str, original_text: str) -> dict[str, Any]:
     return {"fact_cards": fact_cards, "entities": entities, "relations": relations}
 
 
+# Lines that look like document metadata (markdown frontmatter, BOM-ish
+# headers, source citations) and must never become FactCards.
+_META_LINE_PATTERNS = (
+    re.compile(r"^\s*#"),                       # markdown heading
+    re.compile(r"^\s*>"),                       # markdown blockquote / source line
+    re.compile(r"^\s*[*\-+]\s"),                # markdown bullet markers — keep content but strip prefix
+    re.compile(r"^\s*\d+[\.、)]\s*$"),           # bare numbering "1." / "1、"
+    re.compile(r"^\s*[—=\-]{3,}\s*$"),          # horizontal rules
+)
+
+# Phrases that indicate the sentence is talking ABOUT the document itself,
+# not about the heritage subject.
+_META_PHRASE_PATTERNS = (
+    re.compile(r"pilot\s*资料"),
+    re.compile(r"^\s*来源[:：]"),
+    re.compile(r"^\s*版本[:：]"),
+    re.compile(r"^\s*整理(稿|者)[:：]"),
+    re.compile(r"仅用于本项目验证"),
+)
+
+
+def _strip_markdown_inline(text: str) -> str:
+    """Drop residual markdown markers inside a single sentence."""
+    text = re.sub(r"`{1,3}([^`]+)`{1,3}", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"^\s*[*\-+]\s+", "", text)
+    text = re.sub(r"^\s*\d+[\.、)]\s+", "", text)
+    # collapse internal whitespace runs (incl. cross-line gaps from list flows)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+_NUMBERED_LIST_PREFIX = re.compile(r"^(\s*)\d+[\.、)]\s+")
+_BULLET_PREFIX = re.compile(r"^(\s*)[*\-+]\s+")
+
+
+def _clean_material_text(raw: str) -> str:
+    """Drop / rewrite lines that are pure markdown chrome before sentence split.
+
+    - drop heading lines starting with `#`
+    - drop blockquote lines starting with `>`
+    - drop horizontal rules `---`
+    - drop bare numbering ("1." on its own line)
+    - drop lines containing meta phrases (`pilot 资料`, `来源:`, ...)
+    - strip "1. " / "- " list prefixes so they don't bleed into FactCards or
+      get mistaken for sentence terminators downstream
+    """
+    kept: list[str] = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            kept.append("")
+            continue
+        if any(p.search(stripped) for p in _META_LINE_PATTERNS[:2]):
+            continue
+        if _META_LINE_PATTERNS[3].match(stripped):
+            continue
+        if _META_LINE_PATTERNS[4].match(stripped):
+            continue
+        if any(p.search(stripped) for p in _META_PHRASE_PATTERNS):
+            continue
+        line = _NUMBERED_LIST_PREFIX.sub(r"\1", line)
+        line = _BULLET_PREFIX.sub(r"\1", line)
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def _is_acceptable_sentence(sent: str) -> bool:
+    """Reject metadata-y, too-short, or punctuation-only fragments.
+
+    Threshold 10 is calibrated against the pilot materials (≥10 chars filters
+    out things like "工序如下：" / "1." while still keeping short factual
+    sentences such as "拉坯先粗坯，再修坯。").
+    """
+    s = sent.strip()
+    if len(s) < 10:
+        return False
+    if any(p.search(s) for p in _META_PHRASE_PATTERNS):
+        return False
+    # Must contain at least 6 CJK / alphabetic chars to count as a real fact.
+    if len(re.findall(r"[A-Za-z一-鿿]", s)) < 6:
+        return False
+    return True
+
+
 def _local_fallback_extract(materials: list[dict[str, Any]], brief: str) -> dict[str, Any]:
     """Deterministic extractor used when the model cannot produce JSON.
 
-    Splits sentences and turns each into a low-confidence FactCard so the
-    rest of the pipeline can be exercised offline. Quality is not the goal
-    here — coverage is.
+    Cleans markdown chrome (headings, blockquotes, numbering, source lines)
+    BEFORE sentence splitting, then drops fragments shorter than 12 chars or
+    that are metadata in disguise. Each surviving sentence becomes a
+    low-confidence FactCard so the rest of the pipeline can run offline.
     """
     fact_cards: list[dict[str, Any]] = []
     entities: list[dict[str, Any]] = []
@@ -200,22 +286,31 @@ def _local_fallback_extract(materials: list[dict[str, Any]], brief: str) -> dict
         content = m.get("content", "")
         if not content:
             continue
-        sentences = re.split(r"(?<=[。!?\.\!\?])\s*", content.strip())
+        cleaned = _clean_material_text(content)
+        # Split on Chinese sentence-final punctuation only. We deliberately
+        # do NOT include `.` because Chinese pilot materials use it almost
+        # exclusively inside numeric prefixes ("1.", "2.") and decimals.
+        sentences = re.split(r"(?<=[。!?])\s*", cleaned.strip())
         cursor = 0
-        for sent in sentences:
-            sent = sent.strip()
-            if len(sent) < 8:
-                cursor += len(sent) + 1
+        for raw_sent in sentences:
+            sent = _strip_markdown_inline(raw_sent)
+            if not _is_acceptable_sentence(sent):
+                cursor += len(raw_sent) + 1
                 continue
+            # Re-locate inside the ORIGINAL text so source_span points to
+            # what the user uploaded, not the cleaned variant.
             start = content.find(sent, cursor)
+            if start < 0:
+                # try a 20-char prefix (sentence may have been re-flowed)
+                start = content.find(sent[:20]) if len(sent) >= 20 else -1
             if start < 0:
                 start = cursor
             end = start + len(sent)
-            cursor = end
+            cursor = max(cursor, end)
             fact_cards.append(
                 {
                     "fact_id": new_id("fc"),
-                    "topic": brief[:40] or "未命名",
+                    "topic": (brief[:40] or "未命名").strip(),
                     "category": _guess_category(sent),
                     "content": sent[:200],
                     "confidence": 0.45,
@@ -224,7 +319,7 @@ def _local_fallback_extract(materials: list[dict[str, Any]], brief: str) -> dict
                 }
             )
 
-        for word in re.findall(r"[A-Za-z一-龥]{2,}", content):
+        for word in re.findall(r"[A-Za-z一-鿿]{2,}", content):
             if word not in seen_entities and _looks_like_entity(word):
                 seen_entities.add(word)
                 entities.append(

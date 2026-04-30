@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="container">
       <h2>欢迎</h2>
-      <p className="muted">通用型 AI 视频生成 agent 平台。P0 阶段聚焦非遗纪录片 15 镜 pilot 验证。</p>
+      <p className="muted">通用型 AI 视频生成 agent 平台。P0 阶段聚焦非遗纪录片 pilot：3 主题 × 5 核心镜头 = 15 条即梦提示词。</p>
 
       <section className="card" style={{ marginTop: 24 }}>
         <h3 style={{ marginTop: 0 }}>快速上手</h3>
@@ -28,7 +28,7 @@ export default function Home() {
           <li>✅ M2 4 个 Agent(研究/编剧/分镜/质检)</li>
           <li>✅ M3 前端可视化(可见性三档 / 实时事件流 / 重跑)</li>
           <li>✅ M4 即梦手动桥与资产管理(提示词复制 / 视频回传 / 评分)</li>
-          <li>✅ M5 端到端 15 镜 pilot 验证(3 主题 × 15 shot)</li>
+          <li>✅ M5 端到端 pilot 验证(3 主题 × 5 核心镜头 = 15 条即梦提示词)</li>
           <li>⏳ M6 通用平台完善(P1:多方向、配置热加载、对象存储)</li>
         </ul>
       </section>

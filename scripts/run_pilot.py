@@ -50,7 +50,7 @@ def main() -> int:
                 json={
                     "title": title,
                     "direction": "documentary",
-                    "brief": f"非遗 15 镜 pilot 验证 — {title}",
+                    "brief": f"非遗 5 核心镜头 pilot 验证 — {title}",
                 },
             ).json()
             pid = project["id"]
@@ -112,7 +112,7 @@ def main() -> int:
         + "\n  ".join(s["project_id"] for s in summaries)
     )
 
-    bad = [s for s in summaries if not s["completed"] or s["shots"] != 15]
+    bad = [s for s in summaries if not s["completed"] or s["shots"] != 5]
     return 0 if not bad else 1
 
 

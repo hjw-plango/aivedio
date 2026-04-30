@@ -98,7 +98,7 @@ def test_manual_resume_preserves_upstream_chain():
 
         with session_scope() as session:
             shot_count = session.query(Shot).filter(Shot.project_id == pid).count()
-        assert shot_count == 15, f"expected 15 shots after manual resume chain, got {shot_count}"
+        assert shot_count == 5, f"expected 5 core shots after manual resume chain, got {shot_count}"
 
         # Step 4: resume → review and run reaches success.
         client.post(f"/api/runs/{rid}/resume")
