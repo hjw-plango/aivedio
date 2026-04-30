@@ -24,8 +24,9 @@ from fastapi.testclient import TestClient
 PILOT_DIR = Path(__file__).resolve().parent.parent / "configs" / "documentary" / "pilot"
 
 
+import re as _re
+
 _BANNED_SUBSTRINGS = (
-    "#",
     "来源:",
     "来源：",
     "pilot 资料",
@@ -38,6 +39,9 @@ _BANNED_SUBSTRINGS = (
     "## ",
     "** ",
 )
+# Markdown heading marker only counts at the start of a line — avoids false
+# positives on legitimate strings like "C#" or "1#".
+_BANNED_LINE_PATTERNS = (_re.compile(r"(?m)^\s*#"),)
 
 
 def _wait(predicate, timeout=30.0):
@@ -85,7 +89,9 @@ def _has_residual_markdown(text: str) -> str | None:
     for needle in _BANNED_SUBSTRINGS:
         if needle in text:
             return needle
-    # bare numbering at end (e.g. "...流程为：1.")
+    for pat in _BANNED_LINE_PATTERNS:
+        if pat.search(text):
+            return pat.pattern
     if text.rstrip().endswith(("1.", "1、", "1)")):
         return "trailing-numbering"
     return None

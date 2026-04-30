@@ -312,12 +312,20 @@ _REAL_FOOTAGE_SIGNALS_GLOBAL = ("传承人正脸", "传承人采访", "口述史
 def _needs_real_footage(profile: dict[str, Any], shot_type: str, haystack: str) -> bool:
     """A specific (profile × shot_type) requires real footage when the
     haystack (brief + fact_cards text) mentions live/portrait/interview signals.
+
+    Only the silhouette slot converts. Rationale (per docs/documentary-pilot.md):
+    - establishing / craft_close / material_close are explicitly AI-friendly
+      and must stay AI to keep the pilot quota meaningful (we cannot validate
+      AI's value if every shot is real).
+    - imagery is symbolic/abstract and should never be misread as a real
+      record, so it stays AI by design.
+    - silhouette is the only category that overlaps human likeness, so when
+      the brief signals real performers/interviews we promote it to a
+      portrait_interview shot the user must capture in person.
     """
     signals = list(profile.get("real_footage_signals", ())) + list(_REAL_FOOTAGE_SIGNALS_GLOBAL)
     if not any(s in haystack for s in signals):
         return False
-    # Only the silhouette/imagery slot is allowed to "convert" — establishing
-    # / craft_close / material_close stay AI-friendly per pilot doc.
     return shot_type == "silhouette"
 
 
