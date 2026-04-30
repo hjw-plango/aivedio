@@ -120,14 +120,38 @@ export type Shot = {
   assets: ShotAsset[];
 };
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+// Base URL resolution:
+// - Server-side (Node, RSC, route handlers) — must be absolute. Defaults to
+//   http://localhost:8000 so `next dev` / `next start` can fetch from FastAPI
+//   without needing rewrites. Override via SERVER_API_BASE.
+// - Browser — leave empty so requests go through Next.js rewrites
+//   configured in next.config.ts (works regardless of host/port).
+//   Override via NEXT_PUBLIC_API_BASE if you want absolute URLs in the
+//   browser too (e.g. when frontend is on a different domain).
+const SERVER_BASE =
+  process.env.SERVER_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:8000";
+const BROWSER_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+
+function resolveBase(): string {
+  return typeof window === "undefined" ? SERVER_BASE : BROWSER_BASE;
+}
+
+// Exported for components that need to construct URLs (videos, SSE, uploads).
+// Always absolute on the server, possibly relative in the browser.
+export function apiUrl(path: string): string {
+  if (path.startsWith("http")) return path;
+  const base = resolveBase();
+  return base ? `${base}${path}` : path;
+}
 
 async function http<T>(
   path: string,
   init: RequestInit = {},
   expectJson = true,
 ): Promise<T> {
-  const url = path.startsWith("http") ? path : `${BASE}${path}`;
+  const url = apiUrl(path);
   const res = await fetch(url, {
     ...init,
     headers: {
@@ -161,7 +185,7 @@ export const api = {
   uploadMaterial: async (projectId: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${BASE}/api/projects/${projectId}/materials/upload`, {
+    const res = await fetch(`${resolveBase()}/api/projects/${projectId}/materials/upload`, {
       method: "POST",
       body: fd,
     });
@@ -215,14 +239,14 @@ export const api = {
     if (extras.notes) fd.append("notes", extras.notes);
     fd.append("aspect_ratio", extras.aspect_ratio || "16:9");
     fd.append("duration_seconds", extras.duration_seconds || "5");
-    const res = await fetch(`${BASE}/api/shots/${shotId}/jimeng-video`, {
+    const res = await fetch(`${resolveBase()}/api/shots/${shotId}/jimeng-video`, {
       method: "POST",
       body: fd,
     });
     if (!res.ok) throw new Error(`upload failed: ${res.status}`);
     return (await res.json()) as { id: string; shot_id: string; version: number; file_path: string };
   },
-  fileUrl: (path: string) => `${BASE}/api/files?path=${encodeURIComponent(path)}`,
+  fileUrl: (path: string) => `${resolveBase()}/api/files?path=${encodeURIComponent(path)}`,
 
   // runs
   workflows: () => http<string[]>("/api/runs/workflows"),
@@ -242,5 +266,5 @@ export const api = {
     }),
   events: (id: string, since = 0) =>
     http<StepEvent[]>(`/api/runs/${id}/events?since=${since}`),
-  streamUrl: (id: string) => `${BASE}/api/runs/${id}/stream`,
+  streamUrl: (id: string) => `${resolveBase()}/api/runs/${id}/stream`,
 };

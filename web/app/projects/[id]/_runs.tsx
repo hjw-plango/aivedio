@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, Run } from "@/lib/api";
 import { STEP_STATUS_DISPLAY } from "@/lib/eventTypes";
 
@@ -11,19 +11,19 @@ export default function ProjectRuns({ projectId }: { projectId: string }) {
   const [auto, setAuto] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setRuns(await api.listRuns(projectId));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 4000);
     return () => clearInterval(t);
-  }, [projectId]);
+  }, [refresh]);
 
   const start = async () => {
     setBusy(true);

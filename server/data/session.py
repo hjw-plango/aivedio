@@ -46,7 +46,27 @@ def get_session_factory() -> sessionmaker[Session]:
 
 
 def init_db() -> None:
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _apply_lightweight_migrations(engine)
+
+
+def _apply_lightweight_migrations(engine: Engine) -> None:
+    """SQLite-only ALTER TABLE for additive columns.
+
+    SQLAlchemy create_all() only creates missing tables; it does NOT add new
+    columns to existing ones. For P0 we ship a tiny migration shim that
+    introspects current columns and adds any missing additive columns we
+    care about. P1 should switch to alembic.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "steps" in inspector.get_table_names():
+        existing = {col["name"] for col in inspector.get_columns("steps")}
+        with engine.begin() as conn:
+            if "output_data" not in existing:
+                conn.execute(text("ALTER TABLE steps ADD COLUMN output_data JSON DEFAULT '{}'"))
 
 
 @contextmanager

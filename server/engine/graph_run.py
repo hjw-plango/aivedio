@@ -113,8 +113,12 @@ def _run_step(
 
 
 def execute_run(graph_run_id: str, initial_input: dict[str, Any] | None = None) -> None:
-    """Synchronously execute pending steps. Stops at first non-success step
-    (failed/rejected/paused). Caller can call resume_run() to continue.
+    """Synchronously execute pending steps.
+
+    Stops at the first paused/failed/rejected step. Caller can call
+    resume_run() to continue. Upstream is rebuilt from the DB every entry,
+    so manual pause/resume preserves the chain (research.fact_cards →
+    writer.script → storyboard.shots → review.report).
     """
     with session_scope() as session:
         run = session.get(GraphRun, graph_run_id)
@@ -127,7 +131,7 @@ def execute_run(graph_run_id: str, initial_input: dict[str, Any] | None = None) 
         auto_mode = run.auto_mode
 
     factories = {step_name: factory for step_name, factory in workflow.steps}
-    upstream: dict[str, Any] = dict(initial_input or {})
+    upstream: dict[str, Any] = _rebuild_upstream(graph_run_id, initial_input)
 
     while True:
         with session_scope() as session:
@@ -175,22 +179,95 @@ def execute_run(graph_run_id: str, initial_input: dict[str, Any] | None = None) 
             if step:
                 step.status = "success"
                 step.output_summary = output.summary[:1000]
+                step.output_data = output.data or {}
                 step.artifact_refs = [a.get("ref") for a in output.artifacts if a.get("ref")]
                 step.warnings = [{"message": w} for w in output.warnings]
                 step.finished_at = datetime.now(timezone.utc)
 
-        upstream = {**upstream, step_name: output.data, f"{step_name}_summary": output.summary}
+        upstream = {
+            **upstream,
+            step_name: output.data,
+            f"{step_name}_summary": output.summary,
+        }
 
         if not auto_mode:
             with session_scope() as session:
+                pending_left = (
+                    session.query(Step)
+                    .filter(Step.graph_run_id == graph_run_id, Step.status == "pending")
+                    .count()
+                )
                 run = session.get(GraphRun, graph_run_id)
                 if run:
-                    run.status = "paused"
+                    if pending_left == 0:
+                        run.status = "success"
+                        run.finished_at = datetime.now(timezone.utc)
+                    else:
+                        run.status = "paused"
             broadcaster.publish(
                 [f"run:{graph_run_id}"],
-                _make_run_event(graph_run_id, "paused", step_name=step_name),
+                _make_run_event(
+                    graph_run_id,
+                    "success" if pending_left == 0 else "paused",
+                    step_name=step_name,
+                ),
             )
             return
+
+
+def _rebuild_upstream(
+    graph_run_id: str, initial_input: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Hydrate upstream from already-completed steps.
+
+    Steps' output.data was persisted into Step.output_data; we replay them
+    in sequence order so the next agent sees the same chain it would have
+    seen if the run had never paused. When initial_input is None (resume
+    case), we also re-attach the project's brief + materials so agents like
+    writer that read upstream.brief still see them.
+    """
+    from server.data.models import GraphRun, Material, Project, Step
+
+    upstream: dict[str, Any] = dict(initial_input or {})
+    with session_scope() as session:
+        if not initial_input:
+            run = session.get(GraphRun, graph_run_id)
+            if run:
+                project = session.get(Project, run.project_id)
+                if project and "brief" not in upstream:
+                    upstream["brief"] = project.brief or ""
+                if "materials" not in upstream:
+                    materials = (
+                        session.query(Material)
+                        .filter(Material.project_id == run.project_id)
+                        .order_by(Material.created_at)
+                        .all()
+                    )
+                    upstream["materials"] = [
+                        {
+                            "id": m.id,
+                            "source_type": m.source_type,
+                            "source_url": m.source_url,
+                            "content": m.content,
+                            "file_path": m.file_path,
+                            "version": m.version,
+                        }
+                        for m in materials
+                    ]
+                if project and "direction" not in upstream:
+                    upstream["direction"] = project.direction
+
+        completed = (
+            session.query(Step)
+            .filter(Step.graph_run_id == graph_run_id, Step.status == "success")
+            .order_by(Step.sequence, Step.created_at)
+            .all()
+        )
+        for step in completed:
+            data = step.output_data or {}
+            upstream[step.step_name] = data
+            upstream[f"{step.step_name}_summary"] = step.output_summary or ""
+    return upstream
 
 
 def resume_run(graph_run_id: str) -> None:

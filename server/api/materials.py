@@ -93,6 +93,11 @@ def list_materials(project_id: str) -> list[MaterialOut]:
         return [_to_out(m) for m in rows]
 
 
+_ALLOWED_MATERIAL_SUFFIXES = {"txt", "md", "json", "csv", "pdf", "png", "jpg", "jpeg", "webp"}
+_TEXT_SUFFIXES = {"txt", "md", "json", "csv"}
+_MAX_MATERIAL_BYTES = 50 * 1024 * 1024  # 50MB; reference materials, not video
+
+
 @router.post("/upload", response_model=MaterialOut)
 async def upload_material(project_id: str, file: UploadFile = File(...)) -> MaterialOut:
     _ensure_project(project_id)
@@ -100,28 +105,31 @@ async def upload_material(project_id: str, file: UploadFile = File(...)) -> Mate
         raise HTTPException(status_code=400, detail="missing_filename")
 
     suffix = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    body_bytes = await file.read()
-    text_content = ""
-    try:
-        if suffix in {"txt", "md", "json", "csv"}:
-            text_content = body_bytes.decode("utf-8", errors="replace")
-        else:
-            text_content = ""
-    except Exception:
-        text_content = ""
+    if suffix not in _ALLOWED_MATERIAL_SUFFIXES:
+        raise HTTPException(status_code=400, detail="unsupported_material_format")
 
-    # write file to assets/{project}/materials/
-    import io
+    body_bytes = await file.read()
+    if len(body_bytes) > _MAX_MATERIAL_BYTES:
+        raise HTTPException(status_code=413, detail="file_too_large")
+    text_content = ""
+    if suffix in _TEXT_SUFFIXES:
+        try:
+            text_content = body_bytes.decode("utf-8", errors="replace")
+        except Exception:
+            text_content = ""
+
+    import os
     import tempfile
 
     tmp = tempfile.NamedTemporaryFile(delete=False)
+    target_name = f"material_{new_id()}.{suffix}"
     try:
         tmp.write(body_bytes)
         tmp.close()
-        stored = store_file(project_id, "materials", tmp.name, file.filename)
+        # Server-issued name; user-provided filename is never used as a
+        # path segment (defends against ../, NUL, unicode tricks).
+        stored = store_file(project_id, "materials", tmp.name, target_name)
     finally:
-        import os
-
         try:
             os.remove(tmp.name)
         except OSError:

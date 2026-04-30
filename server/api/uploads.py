@@ -33,6 +33,14 @@ router = APIRouter(tags=["uploads"])
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500MB per docs/requirements.md NF1
 MAX_CANDIDATES_PER_TYPE = 3
 ALLOWED_VIDEO_SUFFIXES = {"mp4", "mov", "mkv", "webm", "avi"}
+ALLOWED_IMAGE_SUFFIXES = {"png", "jpg", "jpeg", "webp", "gif"}
+# Whitelist of asset_type values accepted by the generic upload endpoint.
+# Other types are emitted only by agents, never by direct upload.
+ALLOWED_GENERIC_ASSET_TYPES = {"real_footage", "archive_footage", "reference_image"}
+
+
+def _suffix_of(filename: str) -> str:
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
 
 def _check_candidate_capacity(session, shot_id: str, asset_type: str) -> None:
@@ -67,7 +75,7 @@ async def upload_jimeng_video(
 ) -> dict[str, Any]:
     if not file.filename:
         raise HTTPException(status_code=400, detail="missing_filename")
-    suffix = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    suffix = _suffix_of(file.filename)
     if suffix not in ALLOWED_VIDEO_SUFFIXES:
         raise HTTPException(status_code=400, detail="unsupported_video_format")
 
@@ -149,15 +157,22 @@ async def upload_jimeng_video(
 async def upload_generic_asset(
     shot_id: str,
     file: UploadFile = File(...),
-    asset_type: str = Form("real_footage"),
+    asset_type: str = Form(...),
     notes: str = Form(""),
     rights_holder: str = Form(""),
     license_type: str = Form("user_owned"),
 ) -> dict[str, Any]:
     """Generic upload for real_footage / archive_footage / reference_image."""
+    if not asset_type or asset_type not in ALLOWED_GENERIC_ASSET_TYPES:
+        raise HTTPException(status_code=400, detail="invalid_asset_type")
     if not file.filename:
         raise HTTPException(status_code=400, detail="missing_filename")
-    suffix = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+    suffix = _suffix_of(file.filename) or "bin"
+    expected_suffixes = (
+        ALLOWED_IMAGE_SUFFIXES if asset_type == "reference_image" else ALLOWED_VIDEO_SUFFIXES
+    )
+    if suffix not in expected_suffixes:
+        raise HTTPException(status_code=400, detail="unsupported_format_for_asset_type")
 
     with session_scope() as session:
         shot = session.get(Shot, shot_id)

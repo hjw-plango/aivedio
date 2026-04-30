@@ -94,6 +94,7 @@ class Step(Base):
     status: Mapped[str] = mapped_column(String(32), default="pending")
     input_summary: Mapped[str] = mapped_column(Text, default="")
     output_summary: Mapped[str] = mapped_column(Text, default="")
+    output_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     artifact_refs: Mapped[list[str]] = mapped_column(JSON, default=list)
     warnings: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

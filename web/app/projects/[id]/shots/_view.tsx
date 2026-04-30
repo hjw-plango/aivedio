@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, Shot, ShotAsset } from "@/lib/api";
 
 const FAILURE_TAG_OPTIONS = [
@@ -20,16 +20,16 @@ export default function ShotsView({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setShots(await api.listShots(projectId));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, [projectId]);
   useEffect(() => {
     refresh();
-  }, [projectId]);
+  }, [refresh]);
 
   const visible = shots.filter((s) => {
     if (filter === "ai") return !s.requires_real_footage;
