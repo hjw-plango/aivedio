@@ -1,48 +1,102 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# IDE and AI tools
+.vscode/
+.idea/
+.claude/
+.cursor/
+.gemini/
+.artifacts/
+.agent/
+.shared/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# logs
+/logs
+*.log
+
+# environment variables
+.env
+.env.local
+.env.test
+.env.*.local
+docker-logs/
+
+# database
+*.db
+*.db-journal
+prisma/data/
+
+# uploads (user data)
+uploads/
+/data/
+
+certificates
+
+# local temporary snapshots for old-version verification
+.tmp-old-snapshot-*/
+
+# temporary files
+tmp/
+
+# internal AI agent config (not for public)
+AGENTS.md
+agent/
+
+# internal docs (not for public)
+docs/
+
+# GitHub CI workflows (internal)
+# .github/ — 只保留 workflows，忽略其他
+.github/*
+!.github/workflows/
+
+# ============================================================
+# aivedio project-specific (kept after rewrite from waoowaoo)
+# ============================================================
+
+# Vendored reference repo (kept locally for design reference, not committed)
 AIComicBuilder-main/
 
-# 当前主工程，不再忽略。
-# waoowaoo-main/
-
-node_modules/
-.next/
-dist/
-build/
-coverage/
-
-.env
-.env.*
-!.env.example
-
-uploads/
-outputs/
-pilot-renders/
-tmp/
-*.mp4
-*.mov
-*.mkv
-*.avi
+# Local sample files
+.tmp-*
 *.wav
 *.mp3
-
-# local data and runtime
-assets/*
-!assets/.gitkeep
-!assets/README.md
-var/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.venv/
-venv/
-
-# IDE / OS
-Thumbs.db
-.DS_Store
-.idea/
-.vscode/
-
-# Claude Code local settings (personal overrides, not committed)
-.claude/settings.local.json
-.claude/.session-*
