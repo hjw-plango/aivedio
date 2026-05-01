@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 
 interface MimoResult {
@@ -95,7 +95,7 @@ export default function MimoTTSPage() {
     <div className="glass-page min-h-screen px-6 py-10">
       <div className="max-w-3xl mx-auto">
         <Link
-          href="../studio-tools"
+          href={{ pathname: '/studio-tools' }}
           className="text-sm transition-colors"
           style={{ color: 'var(--glass-text-tertiary)' }}
         >

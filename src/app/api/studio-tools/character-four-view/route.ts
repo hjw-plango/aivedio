@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthSession } from '@/lib/api-auth'
+import { apiHandler, ApiError } from '@/lib/api-errors'
+import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
 import {
   isCharacterSource,
   isViewType,
@@ -20,7 +21,7 @@ import {
  * `source` defaults to `project` (NovelPromotionCharacter). Use `global` for
  * cross-project GlobalCharacter records.
  *
- * Auth: user must own the character (project chain or globalCharacter.userId).
+ * Auth: requires user session AND ownership of the character.
  */
 
 function readSource(url: URL): CharacterSource {
@@ -28,37 +29,36 @@ function readSource(url: URL): CharacterSource {
   return isCharacterSource(raw) ? raw : 'project'
 }
 
-async function requireOwnership(
+async function ensureOwnership(
   source: CharacterSource,
   characterId: string,
-): Promise<NextResponse | { userId: string }> {
-  const session = await getAuthSession()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-  }
+  userId: string,
+): Promise<void> {
   const ownerUserId = await resolveCharacterOwnerUserId(source, characterId)
   if (!ownerUserId) {
-    return NextResponse.json({ error: 'Character not found' }, { status: 404 })
+    throw new ApiError('NOT_FOUND')
   }
-  if (ownerUserId !== session.user.id) {
-    return NextResponse.json({ error: 'Character belongs to a different user' }, { status: 403 })
+  if (ownerUserId !== userId) {
+    throw new ApiError('FORBIDDEN')
   }
-  return { userId: session.user.id }
 }
 
-export async function GET(req: NextRequest) {
+export const GET = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+  const userId = auth.session.user.id
+
   const url = new URL(req.url)
   const characterId = url.searchParams.get('characterId')?.trim()
   if (!characterId) {
-    return NextResponse.json({ error: 'characterId is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   const source = readSource(url)
-  const auth = await requireOwnership(source, characterId)
-  if (auth instanceof NextResponse) return auth
+  await ensureOwnership(source, characterId, userId)
 
   const snapshot = await readCharacterFourView(source, characterId)
   if (!snapshot) {
-    return NextResponse.json({ error: 'Character not found' }, { status: 404 })
+    throw new ApiError('NOT_FOUND')
   }
   return NextResponse.json({
     characterId: snapshot.id,
@@ -66,21 +66,24 @@ export async function GET(req: NextRequest) {
     source: snapshot.source,
     views: snapshot.views,
   })
-}
+})
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+  const userId = auth.session.user.id
+
   const url = new URL(req.url)
   const characterId = url.searchParams.get('characterId')?.trim()
   const viewTypeRaw = url.searchParams.get('viewType')?.trim()
   if (!characterId) {
-    return NextResponse.json({ error: 'characterId is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (!viewTypeRaw) {
-    return NextResponse.json({ error: 'viewType is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   const source = readSource(url)
-  const auth = await requireOwnership(source, characterId)
-  if (auth instanceof NextResponse) return auth
+  await ensureOwnership(source, characterId, userId)
 
   if (viewTypeRaw === 'all') {
     await clearAllCharacterFourViews(source, characterId)
@@ -95,6 +98,6 @@ export async function DELETE(req: NextRequest) {
   }
   await setCharacterFourViewUrl(source, characterId, viewTypeRaw, null)
   return NextResponse.json({ characterId, source, cleared: viewTypeRaw })
-}
+})
 
 export const dynamic = 'force-dynamic'

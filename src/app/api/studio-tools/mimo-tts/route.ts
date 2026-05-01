@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiHandler, ApiError } from '@/lib/api-errors'
+import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
 import { synthesizeMimoTTS } from '@/lib/studio-tools/mimo-tts'
 
 /**
@@ -13,15 +15,10 @@ import { synthesizeMimoTTS } from '@/lib/studio-tools/mimo-tts'
  *   }
  *
  * Response 200:
- *   {
- *     audioBase64: string,  // raw base64 WAV (no data: prefix)
- *     audioId: string|null,
- *     model: string,
- *     usage: {...}|null
- *   }
+ *   { audioBase64, audioId, model, usage }
  *
- * Response 4xx/5xx:
- *   { error: string }
+ * Auth: requires user session; the API key in the body belongs to the user
+ * and is forwarded to the MiMo gateway without persisting on our side.
  */
 
 interface MimoBody {
@@ -35,21 +32,24 @@ function asString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined
 }
 
-export async function POST(req: NextRequest) {
+export const POST = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+
   let body: MimoBody
   try {
     body = (await req.json()) as MimoBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   const text = asString(body.text)
   const apiKey = asString(body.apiKey)
   if (!text) {
-    return NextResponse.json({ error: 'text is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (!apiKey) {
-    return NextResponse.json({ error: 'apiKey is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   try {
@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    const status = message.includes('HTTP 4') ? 502 : 500
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: message }, { status: 502 })
   }
-}
+})

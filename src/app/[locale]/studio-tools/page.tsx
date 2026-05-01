@@ -1,7 +1,14 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import type { ReactNode } from 'react'
+
+const HUB_TARGETS = {
+  mimoTts: { pathname: '/studio-tools/mimo-tts' as const },
+  jimeng: { pathname: '/studio-tools/jimeng' as const },
+  fourView: { pathname: '/studio-tools/four-view' as const },
+}
 
 export default function StudioToolsHub() {
   const t = useTranslations('studioTools.hub')
@@ -24,19 +31,19 @@ export default function StudioToolsHub() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <ToolCard
-            href="./studio-tools/mimo-tts"
+            target={HUB_TARGETS.mimoTts}
             title={t('cards.mimoTts.title')}
             desc={t('cards.mimoTts.desc')}
             tag={t('cards.mimoTts.tag')}
           />
           <ToolCard
-            href="./studio-tools/jimeng"
+            target={HUB_TARGETS.jimeng}
             title={t('cards.jimeng.title')}
             desc={t('cards.jimeng.desc')}
             tag={t('cards.jimeng.tag')}
           />
           <ToolCard
-            href="./studio-tools/four-view"
+            target={HUB_TARGETS.fourView}
             title={t('cards.fourView.title')}
             desc={t('cards.fourView.desc')}
             tag={t('cards.fourView.tag')}
@@ -55,19 +62,19 @@ export default function StudioToolsHub() {
 }
 
 function ToolCard({
-  href,
+  target,
   title,
   desc,
   tag,
 }: {
-  href: string
+  target: { pathname: '/studio-tools/mimo-tts' | '/studio-tools/jimeng' | '/studio-tools/four-view' }
   title: string
   desc: string
   tag: string
-}) {
+}): ReactNode {
   return (
     <Link
-      href={href}
+      href={target}
       className="glass-surface block p-5 rounded-xl transition-colors hover:[border-color:var(--glass-stroke-focus)]"
     >
       <div className="flex items-start justify-between mb-2">

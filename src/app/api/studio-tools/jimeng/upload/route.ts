@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiHandler, ApiError } from '@/lib/api-errors'
+import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
 import { prisma } from '@/lib/prisma'
 import { uploadObject, generateUniqueKey, getSignedUrl } from '@/lib/storage'
 import { ensureMediaObjectFromStorageKey } from '@/lib/media/service'
-import { getAuthSession } from '@/lib/api-auth'
 
 /**
  * POST /api/studio-tools/jimeng/upload
@@ -10,9 +11,9 @@ import { getAuthSession } from '@/lib/api-auth'
  * Accepts a video file uploaded by the user (downloaded from Jimeng website).
  * Stores it in MinIO/local storage and returns a fetchable URL + storage key.
  *
- * Two modes:
- *   ① Standalone (no panelId): just upload, return url. No auth required.
- *   ② Linked (panelId provided): auth + project ownership check, then write
+ * Two modes (driven by the optional FormData panelId):
+ *   ① Standalone (no panelId): just upload, return url.
+ *   ② Linked (panelId provided): also verifies project ownership and writes
  *      videoUrl + videoMediaId to the NovelPromotionPanel record so the panel
  *      view picks it up automatically.
  *
@@ -21,12 +22,7 @@ import { getAuthSession } from '@/lib/api-auth'
  *   tag?:    string (optional grouping tag for storage path)
  *   panelId?: string (optional; when set, attach to panel)
  *
- * Response 200 standalone:
- *   { key, url, sizeBytes, contentType, mode: 'standalone' }
- *
- * Response 200 linked:
- *   { key, url, sizeBytes, contentType, mode: 'linked',
- *     panelId, mediaId, mediaUrl }
+ * Auth: user session required.
  */
 
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024 // 200 MB
@@ -46,13 +42,9 @@ function pickExtension(file: File): string {
 /**
  * Resolve the project owner of a given panel.
  *
- * Panel → Storyboard → Episode → NovelPromotionProject → Project (whose
- * userId is the owner). Returns null if any link is missing.
+ * Panel → Storyboard → Episode → NovelPromotionProject → Project.userId.
  */
-async function resolvePanelOwnerUserId(panelId: string): Promise<{
-  userId: string | null
-  projectInternalId: string | null
-} | null> {
+async function resolvePanelOwnerUserId(panelId: string): Promise<string | null> {
   const panel = await prisma.novelPromotionPanel.findUnique({
     where: { id: panelId },
     select: {
@@ -63,8 +55,7 @@ async function resolvePanelOwnerUserId(panelId: string): Promise<{
             select: {
               novelPromotionProject: {
                 select: {
-                  projectId: true,
-                  project: { select: { id: true, userId: true } },
+                  project: { select: { userId: true } },
                 },
               },
             },
@@ -74,27 +65,27 @@ async function resolvePanelOwnerUserId(panelId: string): Promise<{
     },
   })
   if (!panel) return null
-  const project = panel.storyboard?.episode?.novelPromotionProject?.project
-  return {
-    userId: project?.userId ?? null,
-    projectInternalId: project?.id ?? null,
-  }
+  return panel.storyboard?.episode?.novelPromotionProject?.project?.userId ?? null
 }
 
-export async function POST(req: NextRequest) {
+export const POST = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+  const userId = auth.session.user.id
+
   let form: FormData
   try {
     form = await req.formData()
   } catch {
-    return NextResponse.json({ error: 'Invalid multipart form' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   const file = form.get('file')
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'file is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (file.size === 0) {
-    return NextResponse.json({ error: 'file is empty' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (file.size > MAX_VIDEO_BYTES) {
     return NextResponse.json(
@@ -112,21 +103,13 @@ export async function POST(req: NextRequest) {
       ? panelIdRaw.trim()
       : null
 
-  // Auth check is only required when linking to a panel.
-  let authedUserId: string | null = null
   if (panelId) {
-    const session = await getAuthSession()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Authentication required to link to a panel' }, { status: 401 })
+    const ownerUserId = await resolvePanelOwnerUserId(panelId)
+    if (!ownerUserId) {
+      throw new ApiError('NOT_FOUND')
     }
-    authedUserId = session.user.id
-
-    const owner = await resolvePanelOwnerUserId(panelId)
-    if (!owner) {
-      return NextResponse.json({ error: 'Panel not found' }, { status: 404 })
-    }
-    if (owner.userId !== authedUserId) {
-      return NextResponse.json({ error: 'Panel belongs to a different user' }, { status: 403 })
+    if (ownerUserId !== userId) {
+      throw new ApiError('FORBIDDEN')
     }
   }
 
@@ -145,7 +128,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `upload failed: ${message}` }, { status: 500 })
   }
 
-  // Standalone mode: done.
   if (!panelId) {
     return NextResponse.json({
       mode: 'standalone' as const,
@@ -157,37 +139,29 @@ export async function POST(req: NextRequest) {
   }
 
   // Linked mode: register MediaObject, attach to panel.
-  try {
-    const media = await ensureMediaObjectFromStorageKey(storedKey, {
-      mimeType: contentType,
-      sizeBytes: buffer.length,
-    })
+  const media = await ensureMediaObjectFromStorageKey(storedKey, {
+    mimeType: contentType,
+    sizeBytes: buffer.length,
+  })
 
-    await prisma.novelPromotionPanel.update({
-      where: { id: panelId },
-      data: {
-        videoUrl: media.url,
-        videoMediaId: media.id,
-      },
-    })
+  await prisma.novelPromotionPanel.update({
+    where: { id: panelId },
+    data: {
+      videoUrl: media.url,
+      videoMediaId: media.id,
+    },
+  })
 
-    return NextResponse.json({
-      mode: 'linked' as const,
-      key: storedKey,
-      url: media.url,
-      sizeBytes: buffer.length,
-      contentType,
-      panelId,
-      mediaId: media.id,
-      mediaUrl: media.url,
-    })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json(
-      { error: `linked-mode write failed (file uploaded to ${storedKey}): ${message}` },
-      { status: 500 },
-    )
-  }
-}
+  return NextResponse.json({
+    mode: 'linked' as const,
+    key: storedKey,
+    url: media.url,
+    sizeBytes: buffer.length,
+    contentType,
+    panelId,
+    mediaId: media.id,
+    mediaUrl: media.url,
+  })
+})
 
 export const dynamic = 'force-dynamic'

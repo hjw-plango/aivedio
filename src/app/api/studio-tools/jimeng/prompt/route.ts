@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { composeJimengPrompt, JIMENG_WEBSITE_URL, type JimengPromptInput } from '@/lib/studio-tools/jimeng-prompt'
+import { apiHandler, ApiError } from '@/lib/api-errors'
+import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
+import {
+  composeJimengPrompt,
+  JIMENG_WEBSITE_URL,
+  type JimengPromptInput,
+} from '@/lib/studio-tools/jimeng-prompt'
 
 /**
  * POST /api/studio-tools/jimeng/prompt
  *
  * Body: JimengPromptInput
  * Response 200: JimengPromptOutput + { jimengUrl }
+ *
+ * Auth: user session required (so the prompt builder is gated by the same
+ * login as the rest of the workspace).
  */
 
 function asString(v: unknown): string | undefined {
@@ -18,17 +27,20 @@ function asDuration(v: unknown): 5 | 10 | undefined {
   return undefined
 }
 
-export async function POST(req: NextRequest) {
+export const POST = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+
   let body: Record<string, unknown>
   try {
     body = (await req.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   const subject = asString(body.subject)
   if (!subject) {
-    return NextResponse.json({ error: 'subject is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   const input: JimengPromptInput = {
@@ -42,11 +54,6 @@ export async function POST(req: NextRequest) {
     negative: asString(body.negative),
   }
 
-  try {
-    const result = composeJimengPrompt(input)
-    return NextResponse.json({ ...result, jimengUrl: JIMENG_WEBSITE_URL })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 400 })
-  }
-}
+  const result = composeJimengPrompt(input)
+  return NextResponse.json({ ...result, jimengUrl: JIMENG_WEBSITE_URL })
+})

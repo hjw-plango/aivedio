@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiHandler, ApiError } from '@/lib/api-errors'
+import { requireUserAuth, isErrorResponse } from '@/lib/api-auth'
 import { uploadObject, generateUniqueKey } from '@/lib/storage'
 import { ensureMediaObjectFromStorageKey } from '@/lib/media/service'
-import { getAuthSession } from '@/lib/api-auth'
 import {
   isCharacterSource,
   isViewType,
@@ -46,18 +47,16 @@ function pickExtension(file: File): string {
   return 'jpg'
 }
 
-export async function POST(req: NextRequest) {
-  const session = await getAuthSession()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-  }
-  const userId = session.user.id
+export const POST = apiHandler(async (req: NextRequest) => {
+  const auth = await requireUserAuth()
+  if (isErrorResponse(auth)) return auth
+  const userId = auth.session.user.id
 
   let form: FormData
   try {
     form = await req.formData()
   } catch {
-    return NextResponse.json({ error: 'Invalid multipart form' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
 
   const characterIdRaw = form.get('characterId')
@@ -70,13 +69,10 @@ export async function POST(req: NextRequest) {
       ? characterIdRaw.trim()
       : null
   if (!characterId) {
-    return NextResponse.json({ error: 'characterId is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (!isViewType(viewTypeRaw)) {
-    return NextResponse.json(
-      { error: 'viewType must be one of: front, threeQuarter, side, back' },
-      { status: 400 },
-    )
+    throw new ApiError('INVALID_PARAMS')
   }
   const viewType: ViewType = viewTypeRaw
 
@@ -84,10 +80,10 @@ export async function POST(req: NextRequest) {
   const source: CharacterSource = isCharacterSource(sourceCandidate) ? sourceCandidate : 'project'
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'file is required' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (file.size === 0) {
-    return NextResponse.json({ error: 'file is empty' }, { status: 400 })
+    throw new ApiError('INVALID_PARAMS')
   }
   if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
@@ -99,13 +95,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `unsupported file type: ${file.type}` }, { status: 415 })
   }
 
-  // Authorization
+  // Authorization: character must belong to authenticated user.
   const ownerUserId = await resolveCharacterOwnerUserId(source, characterId)
   if (!ownerUserId) {
-    return NextResponse.json({ error: 'Character not found' }, { status: 404 })
+    throw new ApiError('NOT_FOUND')
   }
   if (ownerUserId !== userId) {
-    return NextResponse.json({ error: 'Character belongs to a different user' }, { status: 403 })
+    throw new ApiError('FORBIDDEN')
   }
 
   const ext = pickExtension(file)
@@ -122,31 +118,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `upload failed: ${message}` }, { status: 500 })
   }
 
-  let mediaUrl: string
-  let mediaId: string | null = null
-  try {
-    const media = await ensureMediaObjectFromStorageKey(storedKey, {
-      mimeType: contentType,
-      sizeBytes: buffer.length,
-    })
-    mediaUrl = media.url
-    mediaId = media.id
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: `media registration failed: ${err instanceof Error ? err.message : String(err)}` },
-      { status: 500 },
-    )
-  }
+  const media = await ensureMediaObjectFromStorageKey(storedKey, {
+    mimeType: contentType,
+    sizeBytes: buffer.length,
+  })
 
-  await setCharacterFourViewUrl(source, characterId, viewType, mediaUrl)
+  await setCharacterFourViewUrl(source, characterId, viewType, media.url)
 
   return NextResponse.json({
     characterId,
     source,
     viewType,
-    url: mediaUrl,
-    mediaId,
+    url: media.url,
+    mediaId: media.id,
   })
-}
+})
 
 export const dynamic = 'force-dynamic'

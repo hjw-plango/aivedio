@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 
 type ViewType = 'front' | 'threeQuarter' | 'side' | 'back'
@@ -122,7 +122,7 @@ export default function FourViewPage() {
     <div className="glass-page min-h-screen px-6 py-10">
       <div className="max-w-5xl mx-auto">
         <Link
-          href="../studio-tools"
+          href={{ pathname: '/studio-tools' }}
           className="text-sm"
           style={{ color: 'var(--glass-text-tertiary)' }}
         >
