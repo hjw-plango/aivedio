@@ -30,12 +30,6 @@ import { getAuthSession } from '@/lib/api-auth'
  */
 
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024 // 200 MB
-const ACCEPTED_TYPES = new Set([
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-  'video/x-matroska',
-])
 
 function pickExtension(file: File): string {
   const name = file.name || ''
