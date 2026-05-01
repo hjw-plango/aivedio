@@ -1,240 +1,167 @@
-# 设计文档
+# 设计边界
 
-## 1. 设计目标
+## 总体架构
 
-构建一个**通用型 AI 视频生成 agent 平台**，用纪录片（首个深调方向：非遗）作为优先微调场景。
-
-三条不可让步的设计原则：
-
-1. **能跑通优先**：P0 要端到端从"输入主题"走到"产出可用镜头"，不允许任何一步卡死。
-2. **过程全透明**：每一个 agent 的输入、输出、可公开推理摘要、调用模型、耗时、产物都必须落库，且默认在前端可见。
-3. **可见性可折叠**：当用户信任某个 agent 后，能在 UI 上把它折叠为"黑盒一键执行"，但底层数据依然完整保留，便于回溯和调试。
-
-## 2. 系统分层
+当前主工程保持 `waoowaoo-main` 原架构。
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│ 前端层                                              │
-│   流程图视图 / 步骤详情 / 产物预览 / 可见性控制     │
-└─────────────────────────────────────────────────────┘
-                       ↑↓
-┌─────────────────────────────────────────────────────┐
-│ 编排层（GraphRun / Step）                           │
-│   工作流定义 / 步骤调度 / 状态流转 / 重跑           │
-└─────────────────────────────────────────────────────┘
-                       ↑↓
-┌─────────────────────────────────────────────────────┐
-│ Agent 层                                            │
-│   研究 / 编剧 / 分镜 / 质检（统一协议）             │
-└─────────────────────────────────────────────────────┘
-                       ↑↓
-┌─────────────────────────────────────────────────────┐
-│ 能力层                                              │
-│   LLM 路由 / 检索 / 图像生成 / 即梦手动桥           │
-└─────────────────────────────────────────────────────┘
-                       ↑↓
-┌─────────────────────────────────────────────────────┐
-│ 数据层                                              │
-│   FactCard / Entity / Relation / ShotAsset / Step   │
-│   元数据：DB；资产文件：本地 assets/（P0）          │
-└─────────────────────────────────────────────────────┘
+Next.js App
+Prisma + MySQL
+Redis + BullMQ
+MinIO / S3 compatible storage
+GraphRun / Task / Worker
+Novel Promotion workflow
+Image / Video / Voice / LipSync generation
 ```
 
-每一层只依赖下层，不跨层调用。Agent 层不直接读数据库，由编排层注入。
+不在 P0 新建第二套后端、第二套工作流引擎或第二套资产系统。
 
-## 3. 通用 Agent 协议
+## 数据模型使用方式
 
-所有 agent 必须实现统一接口，这是"过程可见 + 后续可折叠"的关键。
+### 角色
 
-```python
-class Agent:
-    name: str
-    version: str
-
-    def plan(self, input: AgentInput) -> Plan:
-        """返回本次执行的子步骤计划，用于前端预览"""
-
-    def run(self, input: AgentInput, emitter: StepEmitter) -> AgentOutput:
-        """执行主逻辑，每个内部子步骤通过 emitter 发出事件"""
-```
-
-### StepEmitter 事件
-
-每个 agent 在执行过程中必须 emit 以下事件之一：
+使用已有模型：
 
 ```text
-progress_note — agent 当前阶段的可公开进度说明或推理摘要，不保存模型原始思维链
-tool_call     — 调用了什么工具（检索、图谱查询、图像生成）
-tool_result   — 工具返回了什么
-artifact      — 产生了一个可见产物（FactCard、提示词、图片）
-warning       — 出现非致命问题
-error         — 出现致命错误
-finish        — 本步完成
+NovelPromotionCharacter
+CharacterAppearance
 ```
 
-事件统一格式：
+角色一致性主要由这些字段承担：
+
+- `name`
+- `aliases`
+- `profileData`
+- `introduction`
+- `appearances`
+- `CharacterAppearance.changeReason`
+- `CharacterAppearance.description`
+- `CharacterAppearance.imageUrl`
+- `CharacterAppearance.imageUrls`
+- `CharacterAppearance.selectedIndex`
+
+### 场景
+
+使用已有模型：
 
 ```text
-{
-  step_id, agent_name, event_type, timestamp,
-  payload: { ... },
-  visibility: detail | summary | hidden
-}
+NovelPromotionLocation
+LocationImage
 ```
 
-`visibility` 决定前端默认显示等级，对应 UI 的"详细 / 摘要 / 隐藏"三档。
+场景一致性主要由这些字段承担：
 
-## 4. 通用底座 vs 纪录片微调
+- `name`
+- `summary`
+- `selectedImageId`
+- `LocationImage.description`
+- `LocationImage.availableSlots`
+- `LocationImage.imageUrl`
+- `LocationImage.isSelected`
 
-通用底座（所有方向共用）：
+### 分镜
+
+使用已有模型：
 
 ```text
-- Agent 协议
-- 编排引擎（GraphRun / Step）
-- LLM 路由（GPT-5.5 / Opus 4.7 / GPT Image 2 / 轻量）
-- 检索框架（事实库 / 图谱 / 全文 / Agentic 规划）
-- ShotAsset 资产体系
-- 即梦手动桥
-- 执行可视化前端
+NovelPromotionClip
+NovelPromotionPanel
+NovelPromotionStoryboard
 ```
 
-纪录片微调层（可插拔）：
+分镜上下文主要由这些字段承担：
+
+- `Clip.content`
+- `Clip.characters`
+- `Clip.props`
+- `Clip.location`
+- `Clip.screenplay`
+- `Panel.characters`
+- `Panel.props`
+- `Panel.location`
+- `Panel.photographyRules`
+- `Panel.actingNotes`
+- `Panel.imagePrompt`
+- `Panel.videoPrompt`
+- `Panel.candidateImages`
+- `Panel.previousImageUrl`
+
+## 一致性机制
+
+当前不新增 `ProjectMemory` 和 `ContinuityState`。
+
+一致性维护规则：
+
+1. 角色的固定设定写入 `profileData` 和 `introduction`。
+2. 角色每种重要状态创建一条 `CharacterAppearance`。
+3. `changeReason` 必须写成人能识别的状态名称。
+4. panel 里需要特定状态时，应明确引用该 appearance。
+5. 场景参考图由 `selectedImageId` 控制当前使用图。
+6. 光线、天气、时间段变化优先通过场景图描述或新增场景图表达。
+7. 道具一致性先沿用 clip/panel 的 props 字段和资产中心能力。
+
+## 生成链路
+
+### 分镜阶段
+
+`script-to-storyboard/orchestrator.ts` 会按当前 clip 过滤角色、场景、道具，并注入到多阶段 prompt：
 
 ```text
-- 纪录片美学规则集（提示词模板、负向约束、镜头分类）
-- 红线规则（人脸、历史影像、工艺步骤、专家审核）
-- 非遗事实抽取 prompt
-- 评分维度与失败标签
-- 镜头类型分类（空镜 / 工艺特写 / 材料特写 / 剪影 / 意象）
+clip characters
+clip location
+clip props
+filtered character appearances
+filtered character descriptions
+filtered location descriptions
+filtered prop descriptions
 ```
 
-每个微调层通过**配置 + 规则文件**注入，不修改通用底座代码。后续做短剧、漫剧时复用底座，只换微调层。
+### 出图阶段
 
-## 5. 工作流（GraphRun）
-
-P0 的标准工作流：
+`panel-image-task-handler.ts` 会读取：
 
 ```text
-[用户输入主题/Brief]
-   ↓
-[研究 Agent] ────→ FactCard, Entity, Relation
-   ↓
-[编剧 Agent] ────→ 策划方案, 剧本, 旁白
-   ↓
-[分镜 Agent] ────→ 分镜表, 即梦提示词, 分镜图
-   ↓
-[质检 Agent] ────→ 评分, 失败标签, 重跑建议
-   ↓
-[手动即梦] ──────→ 视频文件回传
-   ↓
-[人工评分] ──────→ 视频评分 + 失败标签
-   ↓
-[成片输出]
+panel.characters
+panel.location
+panel.photographyRules
+panel.actingNotes
+projectData.characters
+projectData.locations
 ```
 
-每个节点都是一个 Step，状态独立流转。任何节点都可：
+然后把角色外观和场景参考注入生成上下文。
 
-- 暂停查看产物
-- 拒绝并重跑
-- 修改 input 后重跑
-- 跳过（标记原因）
+## 本地自用策略
 
-## 6. 可见性三档设计
+P0 保持最小改造：
 
-UI 顶部全局开关 + 每个 agent 局部开关：
+- 保留登录注册。
+- 保留用户表。
+- 保留模型配置中心。
+- 保留会员和计费代码。
+- 默认 `BILLING_MODE=OFF`。
+- 先不做无登录本地用户模式。
 
-```text
-detail（开发/调试模式）
-  显示：progress_note + tool_call + tool_result + artifact + warning
-  适用：调试、新场景验证
+原因是 `userId` 与项目、任务、资产、模型偏好关联很深，早期强改容易破坏主流程。
 
-summary（默认模式）
-  显示：每个 agent 的 input 摘要 + output 摘要 + warning
-  隐藏：progress_note 和 tool_call
-  适用：日常使用
+## 品牌和清理
 
-hidden（黑盒模式）
-  显示：只显示最终产物
-  隐藏：所有中间过程
-  适用：流程稳定后的快速生成
-```
+允许做轻量自用化：
 
-切换可见性**不影响数据落库**，只影响展示。任何时候都可切回 detail 看历史 step。
+- README 改为本项目说明。
+- package name 改为本地项目名。
+- UI 中的应用名改为 `AI Video Studio`。
+- 保留底层文件名、队列名、数据库名中的 `waoowaoo`，避免无意义大改。
 
-## 7. 数据模型核心
+## 后续增强触发条件
 
-本节只定义核心对象边界，字段细节放在 `architecture.md`。
+只有在真实测试发现 `waoowaoo` 原生机制无法满足时，才做增强。
 
-```text
-Project    项目与方向配置
-GraphRun   一次工作流执行
-Step       一个可观测、可重跑的执行步骤
-StepEvent  Step 内部事件流
-FactCard   结构化事实
-Entity     人物、场景、道具、工艺、镜头、资产等节点
-Relation   节点关系
-ShotAsset  镜头资产与版本
-```
+优先级从低风险到高风险：
 
-## 8. 能力接入原则
-
-Agent 不直接绑定具体模型、检索实现、图像生成器或即梦执行方式，统一通过能力层调用。
-
-```text
-ModelRouter      负责文本、结构化、视觉、轻量任务路由
-RetrievalGateway 负责事实库、图谱、全文检索、查询规划
-ImageGenerator   负责分镜图、首帧、尾帧、参考图
-JimengBridge      当前只实现 manual_jimeng，后续可增加 auto/api bridge
-```
-
-具体模型分配、字段、错误重试和存储策略放在 `architecture.md`。
-
-## 9. 微调点设计
-
-把"通用底座 + 纪录片微调"做成可插拔。每个微调点都是配置文件而非硬编码：
-
-```text
-configs/
-  documentary/
-    prompts/
-      research.md          # 非遗事实抽取 prompt
-      writing.md           # 纪录片旁白风格 prompt
-      shot_prompt.md       # 即梦提示词模板
-    rules/
-      red_lines.yaml       # 红线规则
-      aesthetic.yaml       # 美学边界
-      shot_types.yaml      # 镜头类型与建议
-    scoring/
-      dimensions.yaml      # 评分维度
-      failure_tags.yaml    # 失败标签
-  drama/      （P2）
-  comic/      （P2）
-```
-
-新方向只新建一个 config 子目录，不改 agent 代码。
-
-## 10. 不在 P0 范围内的事
-
-明确**不做**清单：
-
-- 不做用户系统、权限、多租户。
-- 不做向量库、reranker。
-- 不做 ASR、OCR、视频理解。
-- 不做即梦自动化、第三方中转 API。
-- 不做对象存储（用本地目录）。
-- 不做精细的成本核算。
-- 不做多语言。
-- 不做移动端。
-
-## 11. 关键架构决策记录
-
-| 决策 | 选择 | 替代方案 | 选择理由 |
-| --- | --- | --- | --- |
-| 视频生成方式 | 即梦官网手动 | 网页自动化 / API | 网页能力不稳定 API 化，先验证再自动化 |
-| 检索 | 结构化+图谱+全文 | 向量库 | 非遗事实需精确可追溯，黑盒相似度难调试 |
-| Agent 粒度 | 4 个工作流阶段 agent | 细粒度专家 agent | 上下文损耗与调试成本，先粗后细 |
-| 模型分工 | GPT-5.5 逻辑 / Opus 文本 | 单模型 | 双模型互补，关键节点交叉复核 |
-| 资产候选 | 每阶段最多 3 候选 | 无限保留 | 候选爆炸会拖垮 UI 和决策成本 |
-| 可观测性 | 三档可见性 | 始终全显 / 始终黑盒 | 早期需调试，后期需效率，二者都要 |
-| 存储 | P0 本地，P1 对象存储 | 一开始用 S3 | 减少早期依赖，存储层抽象后切换无感 |
-| 视频评分 | 人工评分为主 | 视频理解模型评分 | 当前没有视频理解模型，不能承诺模型自动判分 |
+1. 改进角色外观命名和引用规范。
+2. 增加面板层的 appearance 选择 UI。
+3. 增加场景图选择和锁定 UI。
+4. 增加道具参考图注入。
+5. 再考虑轻量项目记忆表。
+6. 最后才考虑完整状态机。

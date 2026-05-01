@@ -41,7 +41,7 @@ def test_full_pipeline_mock_mode_produces_real_artifacts():
             json={
                 "title": "景德镇制瓷",
                 "direction": "documentary",
-                "brief": "非遗 15 镜验证 — 景德镇制瓷",
+                "brief": "景德镇制瓷长纪录片第一章验证",
             },
         ).json()
         pid = project["id"]
@@ -74,21 +74,24 @@ def test_full_pipeline_mock_mode_produces_real_artifacts():
             shots = session.query(Shot).filter(Shot.project_id == pid).all()
             assets = session.query(ShotAsset).filter(ShotAsset.project_id == pid).all()
         assert len(facts) >= 3, f"expected >=3 facts, got {len(facts)}"
-        assert len(shots) == 5, f"expected 5 core shots, got {len(shots)}"
+        assert len(shots) == 18, f"expected 18 chapter shots, got {len(shots)}"
 
         jimeng_assets = [a for a in assets if a.asset_type == "jimeng_video_prompt"]
-        # 5 core shots, all AI-friendly for porcelain → expect 5 prompts.
-        assert len(jimeng_assets) >= 4, f"expected >=4 jimeng prompts, got {len(jimeng_assets)}"
+        assert len(jimeng_assets) >= 18, f"expected >=18 jimeng prompts, got {len(jimeng_assets)}"
         for ja in jimeng_assets[:3]:
             assert "纪录片" in ja.prompt or "观察式" in ja.prompt
-            assert ja.rights["source_type"] == "ai_generated"
-            assert ja.rights["review_status"] == "pending"
+            assert ja.meta["duration_seconds"] >= 5
+
+        reference_assets = [a for a in assets if a.asset_type == "reference_image_prompt"]
+        memory_assets = [a for a in assets if a.asset_type == "production_memory"]
+        assert memory_assets, "expected production memory asset"
+        assert len(reference_assets) >= 4, "expected reference image prompts"
 
         # Step events: every agent must emit at least one artifact
         events = client.get(f"/api/runs/{run_id}/events").json()
         artifact_events = [e for e in events if e["event_type"] == "artifact"]
         agents_with_artifacts = {e["payload"].get("agent_name") for e in artifact_events}
-        assert {"research", "writer", "storyboard", "review"} <= agents_with_artifacts
+        assert {"research", "writer", "memory", "storyboard", "review"} <= agents_with_artifacts
 
 
 def test_research_agent_handles_empty_materials_gracefully():

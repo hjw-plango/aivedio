@@ -30,6 +30,7 @@ export default async function ProjectDetailPage({ params }: Props) {
 
       <nav style={{ display: "flex", gap: 16, margin: "12px 0", fontSize: 14 }}>
         <Link href={`/projects/${id}/facts`}>FactCard</Link>
+        <Link href={`/projects/${id}/memory`}>项目记忆/参考图</Link>
         <Link href={`/projects/${id}/shots`}>分镜与即梦桥</Link>
         <Link href={`/projects/${id}/assets`}>资产管理</Link>
       </nav>

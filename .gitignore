@@ -1,5 +1,7 @@
 AIComicBuilder-main/
-waoowaoo-main/
+
+# 当前主工程，不再忽略。
+# waoowaoo-main/
 
 node_modules/
 .next/
@@ -40,3 +42,7 @@ Thumbs.db
 .DS_Store
 .idea/
 .vscode/
+
+# Claude Code local settings (personal overrides, not committed)
+.claude/settings.local.json
+.claude/.session-*

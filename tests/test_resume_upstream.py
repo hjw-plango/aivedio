@@ -88,19 +88,23 @@ def test_manual_resume_preserves_upstream_chain():
         run_after = client.get(f"/api/runs/{rid}").json()
         writer = _step_by_name(run_after["steps"], "writer")
         assert writer is not None
-        assert "场" in writer["output_summary"], (
+        assert "第一章" in writer["output_summary"], (
             f"writer output suspiciously empty: {writer['output_summary']!r}"
         )
 
-        # Step 3: resume → storyboard must see writer.script and produce 15 shots.
+        # Step 3: resume → memory must see writer output and persist references.
+        client.post(f"/api/runs/{rid}/resume")
+        _wait_paused(client, rid, "memory")
+
+        # Step 4: resume → storyboard must see writer.script + memory and produce a chapter.
         client.post(f"/api/runs/{rid}/resume")
         _wait_paused(client, rid, "storyboard")
 
         with session_scope() as session:
             shot_count = session.query(Shot).filter(Shot.project_id == pid).count()
-        assert shot_count == 5, f"expected 5 core shots after manual resume chain, got {shot_count}"
+        assert shot_count == 18, f"expected 18 chapter shots after manual resume chain, got {shot_count}"
 
-        # Step 4: resume → review and run reaches success.
+        # Step 5: resume → review and run reaches success.
         client.post(f"/api/runs/{rid}/resume")
 
         def all_done():
@@ -152,5 +156,6 @@ def test_step_output_data_persisted_to_db():
 
         assert data_by_name["research"].get("fact_cards"), "research output_data missing fact_cards"
         assert data_by_name["writer"].get("script"), "writer output_data missing script"
+        assert data_by_name["memory"].get("memory"), "memory output_data missing memory"
         assert data_by_name["storyboard"].get("shots"), "storyboard output_data missing shots"
         assert data_by_name["review"].get("report"), "review output_data missing report"

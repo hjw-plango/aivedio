@@ -1,0 +1,27 @@
+{
+  "title": "AI Video Studio",
+  "subtitle": "Cinematic production workspace",
+  "enterWorkspace": "Enter Workspace",
+  "loading": "Loading...",
+  "getStarted": "Get Started",
+  "learnMore": "Learn More",
+  "features": {
+    "title": "Move stories into shots",
+    "subtitle": "Keep characters, locations, and storyboards in one workflow",
+    "character": {
+      "title": "Character Workshop",
+      "description": "Manage character profiles, appearance versions, and references"
+    },
+    "storyboard": {
+      "title": "Smart Storyboard",
+      "description": "Turn text into reviewable and repeatable shot panels"
+    },
+    "world": {
+      "title": "World Building",
+      "description": "Manage location references, spatial notes, and usable shot slots"
+    }
+  },
+  "footer": {
+    "copyright": "2026 AI Video Studio. All rights reserved."
+  }
+}

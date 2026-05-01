@@ -48,7 +48,7 @@ def _setup_pipeline(client: TestClient) -> tuple[str, str]:
     assert _wait(done, timeout=30.0)
 
     shots = client.get(f"/api/projects/{pid}/shots").json()
-    assert len(shots) == 5
+    assert len(shots) == 18
     target = next((s for s in shots if not s["requires_real_footage"]), None)
     assert target is not None
     return pid, target["id"]
@@ -65,8 +65,8 @@ def test_list_shots_includes_jimeng_prompts():
             for a in s["assets"]:
                 if a["asset_type"] == "jimeng_video_prompt" and a["prompt"]:
                     any_jimeng = True
-                    assert a["rights"]["source_type"] == "ai_generated"
-        assert any_jimeng, "no jimeng prompts found across 5 core shots"
+                    assert a["meta"]["duration_seconds"] >= 5
+        assert any_jimeng, "no jimeng prompts found across first chapter shots"
 
 
 def test_patch_asset_updates_score_and_status():

@@ -6,8 +6,11 @@ import { api, ShotAsset } from "@/lib/api";
 
 const TYPES = [
   "all",
+  "production_memory",
+  "reference_image_prompt",
   "jimeng_video_prompt",
   "storyboard_prompt",
+  "shot_reference_manifest",
   "manual_jimeng_video",
   "real_footage",
   "reference_image",
@@ -94,6 +97,12 @@ export default function AssetsView({ projectId }: { projectId: string }) {
               <details style={{ fontSize: 12, marginTop: 6 }}>
                 <summary className="muted">版权字段</summary>
                 <pre>{JSON.stringify(a.rights, null, 2)}</pre>
+              </details>
+            )}
+            {a.meta && Object.keys(a.meta).length > 0 && (
+              <details style={{ fontSize: 12, marginTop: 6 }}>
+                <summary className="muted">元数据</summary>
+                <pre>{JSON.stringify(a.meta, null, 2)}</pre>
               </details>
             )}
           </article>

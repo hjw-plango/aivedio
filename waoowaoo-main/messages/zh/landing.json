@@ -1,0 +1,27 @@
+{
+  "title": "AI Video Studio",
+  "subtitle": "影视级创作工作台",
+  "enterWorkspace": "进入工作区",
+  "loading": "加载中...",
+  "getStarted": "立即体验",
+  "learnMore": "了解更多",
+  "features": {
+    "title": "把故事推进到镜头",
+    "subtitle": "保留角色、场景和分镜生产链路",
+    "character": {
+      "title": "角色工坊",
+      "description": "维护人物档案、外观版本和参考图"
+    },
+    "storyboard": {
+      "title": "智能分镜",
+      "description": "从文本生成可检查、可重做的镜头面板"
+    },
+    "world": {
+      "title": "世界构建",
+      "description": "管理场景参考、空间描述和镜头可用位置"
+    }
+  },
+  "footer": {
+    "copyright": "2026 AI Video Studio. All rights reserved."
+  }
+}

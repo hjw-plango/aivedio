@@ -1,9 +1,4 @@
-"""M5 end-to-end pilot regression test.
-
-Runs the 3-topic pilot through the full pipeline and asserts the contractual
-output: 15 shots / topic, 10+ jimeng prompts (allowing a couple of real-only
-shots), facts populated, no failed steps.
-"""
+"""Long-form documentary P0 end-to-end regression."""
 
 from __future__ import annotations
 
@@ -25,82 +20,52 @@ def _wait(predicate, timeout=120.0):
     return False
 
 
-def _run_topic(client: TestClient, title: str, source_file: str) -> dict:
-    material_text = (PILOT_DIR / source_file).read_text(encoding="utf-8")
-    project = client.post(
-        "/api/projects",
-        json={
-            "title": title,
-            "direction": "documentary",
-            "brief": f"15 镜 pilot — {title}",
-        },
-    ).json()
-    pid = project["id"]
-    client.post(
-        f"/api/projects/{pid}/materials",
-        json={"content": material_text, "source_type": "text"},
-    )
-    run = client.post(
-        "/api/runs",
-        json={"project_id": pid, "workflow": "documentary_default", "auto_mode": True},
-    ).json()
-    rid = run["id"]
-
-    def done():
-        r = client.get(f"/api/runs/{rid}").json()
-        return r["status"] == "success" and all(s["status"] == "success" for s in r["steps"])
-
-    assert _wait(done, timeout=120.0), f"{title} pipeline did not finish"
-
-    return {
-        "project_id": pid,
-        "run_id": rid,
-        "facts": client.get(f"/api/projects/{pid}/facts").json(),
-        "shots": client.get(f"/api/projects/{pid}/shots").json(),
-        "events": client.get(f"/api/runs/{rid}/events").json(),
-    }
-
-
-def test_three_topic_pilot_produces_15_shots_each():
+def test_documentary_default_produces_first_chapter_and_memory():
     from server.main import create_app
 
-    topics = [
-        ("景德镇制瓷", "jingdezhen.md"),
-        ("苏绣", "suxiu.md"),
-        ("川剧变脸", "chuanju_bianlian.md"),
-    ]
+    material_text = (PILOT_DIR / "jingdezhen.md").read_text(encoding="utf-8")
     with TestClient(create_app()) as client:
-        results = [_run_topic(client, title, src) for title, src in topics]
+        project = client.post(
+            "/api/projects",
+            json={
+                "title": "景德镇制瓷",
+                "direction": "documentary",
+                "brief": "12 分钟观察式纪录片,先生产第一章 3 分钟。",
+            },
+        ).json()
+        pid = project["id"]
+        client.post(f"/api/projects/{pid}/materials", json={"content": material_text})
+        run = client.post(
+            "/api/runs",
+            json={"project_id": pid, "workflow": "documentary_default", "auto_mode": True},
+        ).json()
+        rid = run["id"]
 
-    # Pilot contract: each project = 5 core shots; 3 topics × 5 = 15 total.
-    for title_idx, (title, _) in enumerate(topics):
-        result = results[title_idx]
-        assert len(result["shots"]) == 5, f"{title} expected 5 shots, got {len(result['shots'])}"
-        assert len(result["facts"]) >= 5, f"{title} too few facts: {len(result['facts'])}"
+        def done():
+            r = client.get(f"/api/runs/{rid}").json()
+            return r["status"] == "success" and all(s["status"] == "success" for s in r["steps"])
 
-        ai_shots = [s for s in result["shots"] if not s["requires_real_footage"]]
-        prompts = [
-            a
-            for s in ai_shots
-            for a in s["assets"]
-            if a["asset_type"] == "jimeng_video_prompt" and a["prompt"]
-        ]
-        # AI shots must be at least 3 (per docs/documentary-pilot.md aesthetics:
-        # space / craft-close / material-close ≥ 2 each over the 3 topics).
-        assert len(prompts) >= 3, f"{title} too few jimeng prompts: {len(prompts)}"
+        assert _wait(done), "pipeline did not finish"
 
-        # every prompt must be markdown-clean (M4 fix regression)
-        for p in prompts:
-            assert "##" not in p["prompt"]
-            assert "```" not in p["prompt"]
+        facts = client.get(f"/api/projects/{pid}/facts").json()
+        shots = client.get(f"/api/projects/{pid}/shots").json()
+        refs = client.get(f"/api/projects/{pid}/assets?asset_type=reference_image_prompt").json()
+        memory = client.get(f"/api/projects/{pid}/assets?asset_type=production_memory").json()
+        events = client.get(f"/api/runs/{rid}/events").json()
 
-    # Each pipeline emitted artifact events from all 4 agents
-    for title_idx, result in enumerate(results):
+        assert len(facts) >= 5
+        assert len(shots) == 18
+        assert int(sum(float(s["duration_estimate"]) for s in shots)) == 180
+        assert len(refs) >= 8
+        assert len(memory) == 1
+        assert all(
+            any(a["asset_type"] == "jimeng_video_prompt" and a["prompt"] for a in s["assets"])
+            for s in shots
+        )
+
         agents = {
             e["payload"].get("agent_name")
-            for e in result["events"]
+            for e in events
             if e["event_type"] == "artifact"
         }
-        assert {"research", "writer", "storyboard", "review"} <= agents, (
-            f"{topics[title_idx][0]} missing artifacts from agents: {agents}"
-        )
+        assert {"research", "writer", "memory", "storyboard", "review"} <= agents

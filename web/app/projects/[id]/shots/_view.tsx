@@ -104,13 +104,19 @@ function ShotCard({
 }) {
   const jimeng = shot.assets.find((a) => a.asset_type === "jimeng_video_prompt");
   const storyboard = shot.assets.find((a) => a.asset_type === "storyboard_prompt");
+  const manifest = shot.assets.find((a) => a.asset_type === "shot_reference_manifest");
   const videos = shot.assets.filter((a) => a.asset_type === "manual_jimeng_video");
+  const timecode =
+    jimeng?.meta.timecode_start && jimeng?.meta.timecode_end
+      ? `${String(jimeng.meta.timecode_start)}-${String(jimeng.meta.timecode_end)}`
+      : "";
 
   return (
     <article className="card">
       <header style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
         <strong>#{shot.sequence}</strong>
         <span className="tag">{shot.shot_type || "未分类"}</span>
+        {timecode && <span className="tag">{timecode}</span>}
         {shot.requires_real_footage && (
           <span className="tag" style={{ background: "var(--warn)", color: "white" }}>
             必须真拍
@@ -128,6 +134,16 @@ function ShotCard({
       <p className="muted" style={{ fontSize: 13 }}>
         构图:{shot.composition} · 运镜:{shot.camera_motion} · 光线:{shot.lighting}
       </p>
+      {shot.narration && (
+        <p style={{ fontSize: 13 }}>
+          <strong>旁白:</strong>{shot.narration}
+        </p>
+      )}
+      {Boolean(jimeng?.meta.sound_design) && (
+        <p className="muted" style={{ fontSize: 13 }}>
+          声音:{String(jimeng?.meta.sound_design)}
+        </p>
+      )}
 
       {!shot.requires_real_footage && jimeng && (
         <JimengCopyBlock prompt={jimeng.prompt} aspect={String(jimeng.meta.aspect_ratio || "16:9")} duration={String(jimeng.meta.duration_seconds || "5")} />
@@ -137,6 +153,13 @@ function ShotCard({
         <details style={{ marginTop: 12 }}>
           <summary className="muted">分镜参考图提示词</summary>
           <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{storyboard.prompt}</pre>
+        </details>
+      )}
+
+      {manifest && (
+        <details style={{ marginTop: 12 }}>
+          <summary className="muted">参考图使用清单</summary>
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{manifest.prompt}</pre>
         </details>
       )}
 

@@ -10,7 +10,7 @@ def test_create_and_list_projects():
     with TestClient(app) as client:
         resp = client.post(
             "/api/projects",
-            json={"title": "景德镇 pilot", "direction": "documentary", "brief": "15 镜验证"},
+            json={"title": "景德镇 pilot", "direction": "documentary", "brief": "第一章 18 镜验证"},
         )
         assert resp.status_code == 200, resp.text
         created = resp.json()

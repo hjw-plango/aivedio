@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     llm_api_key: str = Field(default="")
     anthropic_base_url: str = Field(default="https://api.anthropic.com")
     anthropic_api_key: str = Field(default="")
+    force_mock_provider: bool = Field(default=False)
 
     model_research: str = Field(default="gpt-5.5")
     model_writing: str = Field(default="claude-opus-4-7")

@@ -172,19 +172,24 @@ class ModelRouter:
         settings = get_settings()
         primary: Provider
         secondary: Provider
-        if settings.llm_api_key:
+        if settings.force_mock_provider:
+            primary = MockProvider()
+            secondary = MockProvider()
+        elif settings.llm_api_key:
             primary = OpenAICompatibleProvider(settings.llm_base_url, settings.llm_api_key)
+            if settings.anthropic_api_key:
+                secondary = AnthropicProvider(settings.anthropic_base_url, settings.anthropic_api_key)
+            else:
+                # Many relay stations expose Claude models through the same
+                # OpenAI-compatible /v1/chat/completions route. Reuse primary so
+                # writing tasks do not silently fall back to MockProvider when the
+                # user only configured one relay key.
+                secondary = primary
+        elif settings.anthropic_api_key:
+            primary = MockProvider()
+            secondary = AnthropicProvider(settings.anthropic_base_url, settings.anthropic_api_key)
         else:
             primary = MockProvider()
-        if settings.anthropic_api_key:
-            secondary = AnthropicProvider(settings.anthropic_base_url, settings.anthropic_api_key)
-        elif settings.llm_api_key:
-            # Many relay stations expose Claude models through the same
-            # OpenAI-compatible /v1/chat/completions route. Reuse primary so
-            # writing tasks do not silently fall back to MockProvider when the
-            # user only configured one relay key.
-            secondary = primary
-        else:
             secondary = MockProvider()
         return cls(primary=primary, secondary=secondary)
 

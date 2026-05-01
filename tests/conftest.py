@@ -16,6 +16,7 @@ def _isolated_settings(tmp_path_factory: pytest.TempPathFactory) -> None:
     os.environ["CONFIGS_DIR"] = str(Path(__file__).resolve().parent.parent / "configs")
     os.environ["LLM_API_KEY"] = ""
     os.environ["ANTHROPIC_API_KEY"] = ""
+    os.environ["FORCE_MOCK_PROVIDER"] = "true"
 
     from server.settings import get_settings
 
