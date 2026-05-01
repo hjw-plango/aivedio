@@ -1,0 +1,150 @@
+{
+  "hub": {
+    "title": "Studio Tools",
+    "subtitle": "独立工具集 — 旁挂在主流程外，用于个人创作工作流。",
+    "footer": "这些工具不依赖主管道（novel-promotion / 任务队列）。API Key 在请求中传递，不持久化到数据库。",
+    "cards": {
+      "mimoTts": {
+        "title": "MiMo TTS",
+        "tag": "语音",
+        "desc": "小米 MiMo 系列 TTS 模型语音合成。粘贴文本，得到 WAV 文件。"
+      },
+      "jimeng": {
+        "title": "即梦手动桥",
+        "tag": "视频",
+        "desc": "拼装即梦视频提示词，跳转官网生成，完成后回传视频到本地存储。"
+      },
+      "fourView": {
+        "title": "角色四视图",
+        "tag": "角色",
+        "desc": "为角色管理 4 张参考图（正/四分之三/侧/背）。一致性锚点。"
+      }
+    }
+  },
+  "common": {
+    "back": "← Studio Tools",
+    "loading": "加载中…",
+    "submitting": "提交中…",
+    "copy": "复制",
+    "copied": "已复制",
+    "clear": "清除",
+    "clearAll": "清空全部",
+    "load": "加载",
+    "upload": "上传",
+    "processing": "处理中…",
+    "notSet": "未设置",
+    "fieldRequired": "{field} 必填"
+  },
+  "mimoTts": {
+    "title": "MiMo TTS",
+    "subtitle": "调用 OpenAI 兼容协议的小米 MiMo TTS 网关。响应是 base64 WAV，可在线播放或下载。",
+    "fields": {
+      "apiKey": "API Key",
+      "baseUrl": "Base URL",
+      "model": "模型",
+      "text": "文本",
+      "textPlaceholder": "要合成的文本"
+    },
+    "models": {
+      "v25": "mimo-v2.5-tts (基础)",
+      "v25voiceclone": "mimo-v2.5-tts-voiceclone (声音克隆)",
+      "v25voicedesign": "mimo-v2.5-tts-voicedesign (声音设计)",
+      "v2": "mimo-v2-tts (旧版)"
+    },
+    "actions": {
+      "synthesize": "合成",
+      "synthesizing": "合成中…",
+      "downloadWav": "下载 WAV"
+    },
+    "result": {
+      "modelLabel": "模型：",
+      "tokensLabel": "tokens"
+    },
+    "errors": {
+      "textRequired": "请输入要合成的文本",
+      "apiKeyRequired": "请填写 API Key"
+    }
+  },
+  "jimeng": {
+    "title": "即梦手动桥",
+    "subtitle": "即梦官网无 API。本工具走人在回路流程：",
+    "subtitleSteps": "① 拼装提示词 → ② 跳转即梦生成 → ③ 下载 mp4 → ④ 回传到本地存储",
+    "compose": {
+      "heading": "① 拼装提示词",
+      "fields": {
+        "subject": "主体 *",
+        "subjectHint": "例：身着青蓝色长袍的老者",
+        "action": "动作",
+        "actionHint": "例：缓缓抬起右手抚摸瓷瓶",
+        "camera": "镜头语言",
+        "cameraHint": "例：特写、中景缓推、跟随镜头",
+        "lighting": "光线",
+        "lightingHint": "例：暖色侧光、清晨柔光",
+        "style": "风格",
+        "styleHint": "例：纪录片写实、国漫水墨、电影级",
+        "duration": "时长（秒）",
+        "extra": "补充",
+        "extraHint": "额外的氛围 / 细节描述",
+        "negative": "负面提示",
+        "negativeHint": "不希望出现的元素"
+      },
+      "actions": {
+        "generate": "生成提示词",
+        "generating": "组装中…",
+        "copyPrompt": "复制提示词",
+        "openJimeng": "打开即梦官网 ↗"
+      },
+      "result": {
+        "promptHint": "即梦提示词（直接粘贴到官网输入框）",
+        "negativeHint": "负面提示"
+      },
+      "errors": {
+        "subjectRequired": "subject (主体描述) 必填"
+      }
+    },
+    "upload": {
+      "heading": "② 回传 mp4",
+      "subtitle": "从即梦官网下载视频后，在这里上传到本地存储（MinIO / local）。",
+      "fields": {
+        "tag": "标签",
+        "tagHint": "可选，例：scene-1、panel-abc（限字母数字横线）",
+        "panelId": "Panel ID",
+        "panelIdHint": "可选；填了之后视频会自动写入该 panel 的 videoUrl/videoMediaId（需登录 + 项目所有权）",
+        "panelIdPlaceholder": "NovelPromotionPanel.id",
+        "file": "视频文件 *",
+        "fileHint": "支持 mp4 / mov / webm，<= 200MB"
+      },
+      "actions": {
+        "upload": "上传到存储"
+      },
+      "result": {
+        "modeLinked": "已写入面板",
+        "modeStandalone": "独立上传",
+        "panelIdLabel": "panelId:",
+        "keyLabel": "key:",
+        "urlLabel": "url:"
+      },
+      "errors": {
+        "fileRequired": "请选择要上传的视频文件"
+      }
+    }
+  },
+  "fourView": {
+    "title": "角色四视图管理",
+    "subtitle": "来自 AIComicBuilder 设计——为角色管理 4 张参考图（正/四分之三/侧/背），用作分镜面板生成时的角色一致性锚点。",
+    "fieldsHint": "字段映射：referenceFrontUrl / referenceThreeQuarterUrl / referenceSideUrl / referenceBackUrl",
+    "controls": {
+      "characterIdPlaceholder": "输入 characterId",
+      "loadHint": "提示：characterId 可在工作区角色管理页找到，或通过 Prisma Studio 查询对应表。",
+      "sourceLabel": "来源",
+      "sourceProject": "项目级 (NovelPromotionCharacter)",
+      "sourceGlobal": "全局 (GlobalCharacter)"
+    },
+    "views": {
+      "front": "正面",
+      "threeQuarter": "四分之三",
+      "side": "侧面",
+      "back": "背面"
+    }
+  }
+}

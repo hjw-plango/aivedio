@@ -833,6 +833,11 @@ model GlobalCharacter {
   customVoiceMediaId String?
   customVoiceMedia MediaObject? @relation("GlobalCharacterVoiceMedia", fields: [customVoiceMediaId], references: [id], onDelete: SetNull)
   globalVoiceId    String? // 绑定的全局音色 ID
+  // 🆕 四视图参考集（来自 AIComicBuilder 设计：正/四分之三/侧/背），跨项目复用
+  referenceFrontUrl        String?  @db.Text
+  referenceThreeQuarterUrl String?  @db.Text
+  referenceSideUrl         String?  @db.Text
+  referenceBackUrl         String?  @db.Text
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

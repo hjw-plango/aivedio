@@ -1,40 +1,53 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 export default function StudioToolsHub() {
+  const t = useTranslations('studioTools.hub')
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
+    <div className="glass-page min-h-screen px-6 py-10">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Studio Tools</h1>
-        <p className="text-slate-400 mb-8 text-sm">
-          独立工具集 — 旁挂在 waoowaoo 主流程外，用于个人创作工作流。
+        <h1
+          className="text-3xl font-bold mb-2"
+          style={{ color: 'var(--glass-text-primary)' }}
+        >
+          {t('title')}
+        </h1>
+        <p
+          className="mb-8 text-sm"
+          style={{ color: 'var(--glass-text-tertiary)' }}
+        >
+          {t('subtitle')}
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <ToolCard
             href="./studio-tools/mimo-tts"
-            title="MiMo TTS"
-            desc="小米 MiMo 系列 TTS 模型语音合成。粘贴文本，得到 WAV 文件。"
-            tag="语音"
+            title={t('cards.mimoTts.title')}
+            desc={t('cards.mimoTts.desc')}
+            tag={t('cards.mimoTts.tag')}
           />
           <ToolCard
             href="./studio-tools/jimeng"
-            title="即梦手动桥"
-            desc="拼装即梦视频提示词，跳转官网生成，完成后回传视频到本地存储。"
-            tag="视频"
+            title={t('cards.jimeng.title')}
+            desc={t('cards.jimeng.desc')}
+            tag={t('cards.jimeng.tag')}
           />
           <ToolCard
             href="./studio-tools/four-view"
-            title="角色四视图"
-            desc="为角色管理 4 张参考图（正/四分之三/侧/背）。一致性锚点。"
-            tag="角色"
+            title={t('cards.fourView.title')}
+            desc={t('cards.fourView.desc')}
+            tag={t('cards.fourView.tag')}
           />
         </div>
 
-        <p className="text-xs text-slate-500 mt-10">
-          这些工具不依赖 waoowaoo 主管道（novel-promotion / 任务队列）。
-          API Key 在请求中传递，不持久化到数据库。
+        <p
+          className="text-xs mt-10"
+          style={{ color: 'var(--glass-text-tertiary)' }}
+        >
+          {t('footer')}
         </p>
       </div>
     </div>
@@ -55,13 +68,31 @@ function ToolCard({
   return (
     <Link
       href={href}
-      className="block p-5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600 transition-colors"
+      className="glass-surface block p-5 rounded-xl transition-colors hover:[border-color:var(--glass-stroke-focus)]"
     >
       <div className="flex items-start justify-between mb-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">{tag}</span>
+        <h3
+          className="text-lg font-semibold"
+          style={{ color: 'var(--glass-text-primary)' }}
+        >
+          {title}
+        </h3>
+        <span
+          className="text-xs px-2 py-0.5 rounded"
+          style={{
+            background: 'var(--glass-bg-muted)',
+            color: 'var(--glass-text-secondary)',
+          }}
+        >
+          {tag}
+        </span>
       </div>
-      <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
+      <p
+        className="text-sm leading-relaxed"
+        style={{ color: 'var(--glass-text-secondary)' }}
+      >
+        {desc}
+      </p>
     </Link>
   )
 }

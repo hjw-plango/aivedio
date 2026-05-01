@@ -1,149 +1,164 @@
-<p align="center">
-  <img src="public/banner.png" alt="waoowaoo" width="600">
-</p>
+# AI Video Studio
 
-<h1 align="center">waoowaoo AI Video Studio</h1>
+> Cinematic-grade AI video production workbench — documentary / animated / short-form drama in one environment
 
-<p align="center">
-  An AI-powered tool for creating short drama / comic videos — automatically generates storyboards, characters, and scenes from novel text, then assembles them into complete videos.
-</p>
+English · [中文](README.md)
 
-<p align="center">
-  <a href="README.md">中文文档</a> · <a href="https://www.waoowaoo.com/">Join Waitlist</a> · <a href="https://github.com/saturndec/waoowaoo/issues">Report Bug</a>
-</p>
+## What is this
 
-> [!IMPORTANT]
-> **Beta Notice**: This project is currently in its early beta stage. As it is currently a solo-developed project, some bugs and imperfections are to be expected. We are iterating rapidly — please stay tuned for frequent updates! We are committed to rolling out a massive roadmap of new features and optimizations, with the ultimate goal of becoming the top-tier solution in the industry. Your feedback and feature requests are highly welcome!
+AI Video Studio is a **self-hosted** AI video production workbench. Built on top of the mature [waoowaoo](https://github.com/saturndec/waoowaoo) workflow as a foundation, with three custom enhancements for individual creators:
 
----
+1. **MiMo TTS first-class provider** — Xiaomi MiMo TTS series wired into the main pipeline, with voice cloning and voice design
+2. **Jimeng manual bridge** — Human-in-the-loop workflow for the (API-less) Jimeng video service: compose prompt → open Jimeng → upload result mp4, auto-bind to storyboard panel
+3. **Character Four-View** — From AIComicBuilder design: 4 reference images per character (front / three-quarter / side / back) as a consistency anchor
 
-## ✨ Features
+The main pipeline (script split → character/location extraction → multi-stage storyboard → panel images → video → voice → lipsync → composition) keeps waoowaoo's original capabilities intact.
 
-- 🎬 **AI Script Analysis** — Parse novels, extract characters, scenes & plot automatically
-- 🎨 **Character & Scene Generation** — Consistent AI-generated character and scene images
-- 📽️ **Storyboard Video** — Auto-generate shots and compose into complete videos
-- 🎙️ **AI Voiceover** — Multi-character voice synthesis
-- 🌐 **Bilingual UI** — Chinese / English, switch in the top-right corner
+## Core capabilities
 
----
+### Main pipeline (waoowaoo foundation)
 
-## 🚀 Quick Start
+- Project / Episode / Story / SRT subtitle management
+- Character management (aliases, multi-version appearances, voice binding, reference images)
+- Location / Prop libraries / Asset Hub (cross-project reuse)
+- Multi-stage storyboard (plan → cinematography → acting → detail)
+- Panel image candidate generation + voting
+- Video generation (fal / ark / minimax / vidu / google veo / openai-compatible)
+- Character voice + lip-sync
+- Task queue (BullMQ) + workers + retries + Bull Board admin panel
+- Per-user model API config center (runtime read, zero hardcoding)
+- i18n (zh / en)
 
-**Prerequisites**: Install [Docker Desktop](https://docs.docker.com/get-docker/)
+### Custom additions (Studio Tools)
 
-### Method 1: Pull Pre-built Image (Easiest)
+| Tool | Path | Purpose |
+|---|---|---|
+| **MiMo TTS** | `/en/studio-tools/mimo-tts` | Standalone synth: paste text → WAV. Also exposed as a first-class provider for the main voice stage |
+| **Jimeng Manual Bridge** | `/en/studio-tools/jimeng` | Compose Jimeng prompt + open website + upload mp4 → optionally bind to `NovelPromotionPanel.videoUrl` |
+| **Character Four-View** | `/en/studio-tools/four-view` | Upload 4 references per `NovelPromotionCharacter` or `GlobalCharacter` |
 
-No need to clone the repository. Just download and run:
+Side-channel architecture: Studio Tools do not depend on the main pipeline's task queue.
 
-```bash
-# Download docker-compose.yml
-curl -O https://raw.githubusercontent.com/saturndec/waoowaoo/main/docker-compose.yml
+## Quick start
 
-# Start all services
-docker compose up -d
-```
+### Requirements
 
-> ⚠️ This is a beta version. Database is not compatible between versions. To upgrade, clear old data first:
+- Node.js 20+
+- npm 9+
+- Docker Desktop (for MySQL + Redis + MinIO)
 
-```bash
-docker compose down -v
-docker rmi ghcr.io/saturndec/waoowaoo:latest
-curl -O https://raw.githubusercontent.com/saturndec/waoowaoo/main/docker-compose.yml
-docker compose up -d
-```
+### Local dev mode
 
-> After starting, please **clear your browser cache** and log in again to avoid issues caused by stale cache.
-
-### Method 2: Clone & Docker Build (Full Control)
-
-```bash
-git clone https://github.com/saturndec/waoowaoo.git
-cd waoowaoo
-docker compose up -d
-```
-
-To update:
-```bash
-git pull
-docker compose down && docker compose up -d --build
-```
-
-### Method 3: Local Development (For Developers)
-
-```bash
-git clone https://github.com/saturndec/waoowaoo.git
-cd waoowaoo
-
-# Copy environment config (must be done before npm install)
-cp .env.example .env
-# ⚠️ Edit .env to fill in your AI API Keys (NEXTAUTH_URL defaults to http://localhost:3000, no change needed)
-
+```powershell
+# 1. Install deps (runs prisma generate in postinstall)
 npm install
 
-# Start infrastructure only
+# 2. Bring up the docker trio
 docker compose up mysql redis minio -d
 
-# Run database migration
+# 3. Push schema to MySQL
 npx prisma db push
 
-# Start development server
+# 4. Start (next + worker + watchdog + bull-board)
 npm run dev
 ```
 
----
+Open:
 
-Visit [http://localhost:13000](http://localhost:13000) (Method 1 & 2) or [http://localhost:3000](http://localhost:3000) (Method 3) to get started!
+- App:               http://localhost:3000
+- Task queue:        http://localhost:3010/admin/queues
+- MinIO console:     http://localhost:19001 (login `minioadmin` / `minioadmin`)
 
-> The database is initialized automatically on first launch — no extra configuration needed.
+### Docker container mode
 
-> [!TIP]
-> **If you experience lag**: HTTP mode may limit browser connections. Install [Caddy](https://caddyserver.com/docs/install) for HTTPS:
-> ```bash
-> caddy run --config Caddyfile
-> ```
-> Then visit [https://localhost:1443](https://localhost:1443)
+```powershell
+docker compose up -d
+```
 
----
+Open:
 
-## 🔧 API Configuration
+- App:               http://localhost:13000
+- Task queue:        http://localhost:13010/admin/queues
 
-After launching, go to **Settings** to configure your AI service API keys. A built-in guide is provided.
+### First-time use
 
-> 💡 **Note**: Currently only official provider APIs are recommended. Third-party compatible formats (OpenAI Compatible) are not yet fully supported and will be improved in future releases.
+1. Register / sign in
+2. In Settings, add your LLM / image / video / TTS API keys
+3. (Optional) Add a MiMo provider: base URL `https://api.xiaomimimo.com/v1`, model `mimo-v2.5-tts`
+4. Create a test project (recommend: 2-4 characters / 2-3 locations / 3-6 props / 8-16 panels)
+5. Import an 800-2000 word story or screenplay
+6. Verify character/location/prop extraction
+7. In Studio Tools → Four-View, upload reference images per character
+8. Generate storyboard → panel images → videos
+9. Voice → lipsync → composition
 
----
+## Tech stack
 
-## 📦 Tech Stack
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) + React 19 + Tailwind 4 |
+| Data | Prisma 6 + MySQL 8 |
+| Tasks | BullMQ + Redis 7 |
+| Storage | MinIO (S3-compatible) / local FS / Tencent COS |
+| Auth | NextAuth |
+| i18n | next-intl (zh / en) |
+| AI SDKs | OpenAI / Gemini / Anthropic / Volcano Ark / Aliyun Bailian / Fal / Minimax / Vidu / SiliconFlow / **Xiaomi MiMo** |
+| Video | Remotion + sharp |
+| Tests | vitest |
 
-- **Framework**: Next.js 15 + React 19
-- **Database**: MySQL + Prisma ORM
-- **Queue**: Redis + BullMQ
-- **Styling**: Tailwind CSS v4
-- **Auth**: NextAuth.js
+## Schema additions
 
----
+8 new fields on top of the waoowaoo schema:
 
-## 📦 Preview
+```prisma
+model NovelPromotionCharacter {
+  // ... existing
+  referenceFrontUrl        String? @db.Text  // NEW
+  referenceThreeQuarterUrl String? @db.Text  // NEW
+  referenceSideUrl         String? @db.Text  // NEW
+  referenceBackUrl         String? @db.Text  // NEW
+}
 
-![4f7b913264f7f26438c12560340e958c67fa833a](https://github.com/user-attachments/assets/fa0e9c57-9ea0-4df3-893e-b76c4c9d304b)
-![67509361cbe6809d2496a550de5733b9f99a9702](https://github.com/user-attachments/assets/f2fb6a64-5ba8-4896-a064-be0ded213e42)
-![466e13c8fd1fc799d8f588c367ebfa24e1e99bf7](https://github.com/user-attachments/assets/09bbff39-e535-4c67-80a9-69421c3b05ee)
-![c067c197c20b0f1de456357c49cdf0b0973c9b31](https://github.com/user-attachments/assets/688e3147-6e95-43b0-b9e7-dd9af40db8a0)
+model GlobalCharacter {
+  // ... existing
+  referenceFrontUrl        String? @db.Text  // NEW (cross-project)
+  referenceThreeQuarterUrl String? @db.Text
+  referenceSideUrl         String? @db.Text
+  referenceBackUrl         String? @db.Text
+}
+```
 
----
+Apply with `npx prisma db push`.
 
-## 🤝 Contributing
+## Studio Tools API cheatsheet
 
-This project is maintained by the core team. You're welcome to contribute by:
+```
+POST  /api/studio-tools/mimo-tts                       MiMo TTS synth
+POST  /api/studio-tools/jimeng/prompt                  Compose Jimeng prompt
+POST  /api/studio-tools/jimeng/upload                  Upload Jimeng mp4 (optional panelId binding)
+GET   /api/studio-tools/character-four-view            Read 4 views (?source=project|global)
+POST  /api/studio-tools/character-four-view/upload     Upload one view
+DELETE /api/studio-tools/character-four-view           Clear one view or all
+```
 
-- 🐛 Filing [Issues](https://github.com/saturndec/waoowaoo/issues) — report bugs
-- 💡 Filing [Issues](https://github.com/saturndec/waoowaoo/issues) — propose features
-- 🔧 Submitting Pull Requests as references — we review every PR carefully for ideas, but the team implements fixes internally rather than merging external PRs directly
+## Roadmap
 
----
+- [x] Restructure: waoowaoo as foundation, drop legacy prototype
+- [x] Studio Tools: MiMo TTS / Jimeng manual bridge / four-view
+- [x] MiMo as first-class provider (main voice stage integration)
+- [x] Jimeng upload → auto-bind to panel
+- [x] Four-view schema + API + UI (project + global)
+- [x] Studio Tools i18n (zh / en) + glass design system
+- [ ] Auto-inject four-view into storyboard panel prompts
+- [ ] Bidirectional sync between Jimeng tool and panel views
+- [ ] Per-shot transitions and subtitle burn-in in composition
 
-**Made with ❤️ by waoowaoo team**
+## Acknowledgements
 
-## Star History
+- [waoowaoo](https://github.com/saturndec/waoowaoo) — main pipeline, task orchestration, provider abstractions
+- [AIComicBuilder](https://github.com/twwch/AIComicBuilder) — four-view design inspiration
+- Xiaomi [MiMo](https://github.com/XiaomiMiMo/MiMo) — TTS models
 
-[![Star History Chart](https://api.star-history.com/svg?repos=saturndec/waoowaoo&type=date&legend=top-left)](https://www.star-history.com/#saturndec/waoowaoo&type=date&legend=top-left)
+## License
+
+Inherits the waoowaoo upstream license — see [LICENSE](LICENSE).

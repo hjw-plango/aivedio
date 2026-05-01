@@ -1,49 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { getAuthSession } from '@/lib/api-auth'
+import {
+  isCharacterSource,
+  isViewType,
+  readCharacterFourView,
+  resolveCharacterOwnerUserId,
+  clearAllCharacterFourViews,
+  setCharacterFourViewUrl,
+  listViewTypes,
+  type CharacterSource,
+} from '@/lib/studio-tools/four-view'
 
 /**
  * Four-view character reference query / clear.
  *
- * GET /api/studio-tools/character-four-view?characterId=...
- *   Returns the 4 reference URLs for the character.
+ * GET    /api/studio-tools/character-four-view?characterId=...&source=project|global
+ * DELETE /api/studio-tools/character-four-view?characterId=...&viewType=...&source=...
  *
- * DELETE /api/studio-tools/character-four-view?characterId=...&viewType=...
- *   Clears one view (sets URL to null). viewType=all clears all four.
+ * `source` defaults to `project` (NovelPromotionCharacter). Use `global` for
+ * cross-project GlobalCharacter records.
  *
- * Auth: user must own the character (via project).
+ * Auth: user must own the character (project chain or globalCharacter.userId).
  */
 
-const VIEW_TYPES = ['front', 'threeQuarter', 'side', 'back'] as const
-type ViewType = (typeof VIEW_TYPES)[number]
-
-const VIEW_FIELD: Record<ViewType, 'referenceFrontUrl' | 'referenceThreeQuarterUrl' | 'referenceSideUrl' | 'referenceBackUrl'> = {
-  front: 'referenceFrontUrl',
-  threeQuarter: 'referenceThreeQuarterUrl',
-  side: 'referenceSideUrl',
-  back: 'referenceBackUrl',
+function readSource(url: URL): CharacterSource {
+  const raw = url.searchParams.get('source')?.trim() || 'project'
+  return isCharacterSource(raw) ? raw : 'project'
 }
 
-async function resolveCharacterOwner(characterId: string): Promise<string | null> {
-  const row = await prisma.novelPromotionCharacter.findUnique({
-    where: { id: characterId },
-    select: {
-      novelPromotionProject: {
-        select: {
-          project: { select: { userId: true } },
-        },
-      },
-    },
-  })
-  return row?.novelPromotionProject?.project?.userId ?? null
-}
-
-async function requireOwnership(characterId: string): Promise<NextResponse | { userId: string }> {
+async function requireOwnership(
+  source: CharacterSource,
+  characterId: string,
+): Promise<NextResponse | { userId: string }> {
   const session = await getAuthSession()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
-  const ownerUserId = await resolveCharacterOwner(characterId)
+  const ownerUserId = await resolveCharacterOwnerUserId(source, characterId)
   if (!ownerUserId) {
     return NextResponse.json({ error: 'Character not found' }, { status: 404 })
   }
@@ -59,32 +52,19 @@ export async function GET(req: NextRequest) {
   if (!characterId) {
     return NextResponse.json({ error: 'characterId is required' }, { status: 400 })
   }
-  const auth = await requireOwnership(characterId)
+  const source = readSource(url)
+  const auth = await requireOwnership(source, characterId)
   if (auth instanceof NextResponse) return auth
 
-  const character = await prisma.novelPromotionCharacter.findUnique({
-    where: { id: characterId },
-    select: {
-      id: true,
-      name: true,
-      referenceFrontUrl: true,
-      referenceThreeQuarterUrl: true,
-      referenceSideUrl: true,
-      referenceBackUrl: true,
-    },
-  })
-  if (!character) {
+  const snapshot = await readCharacterFourView(source, characterId)
+  if (!snapshot) {
     return NextResponse.json({ error: 'Character not found' }, { status: 404 })
   }
   return NextResponse.json({
-    characterId: character.id,
-    name: character.name,
-    views: {
-      front: character.referenceFrontUrl,
-      threeQuarter: character.referenceThreeQuarterUrl,
-      side: character.referenceSideUrl,
-      back: character.referenceBackUrl,
-    },
+    characterId: snapshot.id,
+    name: snapshot.name,
+    source: snapshot.source,
+    views: snapshot.views,
   })
 }
 
@@ -98,35 +78,23 @@ export async function DELETE(req: NextRequest) {
   if (!viewTypeRaw) {
     return NextResponse.json({ error: 'viewType is required' }, { status: 400 })
   }
-  const auth = await requireOwnership(characterId)
+  const source = readSource(url)
+  const auth = await requireOwnership(source, characterId)
   if (auth instanceof NextResponse) return auth
 
   if (viewTypeRaw === 'all') {
-    await prisma.novelPromotionCharacter.update({
-      where: { id: characterId },
-      data: {
-        referenceFrontUrl: null,
-        referenceThreeQuarterUrl: null,
-        referenceSideUrl: null,
-        referenceBackUrl: null,
-      },
-    })
-    return NextResponse.json({ characterId, cleared: 'all' })
+    await clearAllCharacterFourViews(source, characterId)
+    return NextResponse.json({ characterId, source, cleared: 'all' })
   }
 
-  const isView = (VIEW_TYPES as readonly string[]).includes(viewTypeRaw)
-  if (!isView) {
+  if (!isViewType(viewTypeRaw)) {
     return NextResponse.json(
-      { error: `viewType must be one of: ${VIEW_TYPES.join(', ')}, all` },
+      { error: `viewType must be one of: ${listViewTypes().join(', ')}, all` },
       { status: 400 },
     )
   }
-  const field = VIEW_FIELD[viewTypeRaw as ViewType]
-  await prisma.novelPromotionCharacter.update({
-    where: { id: characterId },
-    data: { [field]: null },
-  })
-  return NextResponse.json({ characterId, cleared: viewTypeRaw })
+  await setCharacterFourViewUrl(source, characterId, viewTypeRaw, null)
+  return NextResponse.json({ characterId, source, cleared: viewTypeRaw })
 }
 
 export const dynamic = 'force-dynamic'

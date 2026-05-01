@@ -1,0 +1,150 @@
+{
+  "hub": {
+    "title": "Studio Tools",
+    "subtitle": "Standalone tools — sit alongside the main pipeline, for personal creative workflows.",
+    "footer": "These tools do not depend on the main pipeline (novel-promotion / task queue). API keys are passed in requests and never persisted.",
+    "cards": {
+      "mimoTts": {
+        "title": "MiMo TTS",
+        "tag": "Voice",
+        "desc": "Speech synthesis via Xiaomi MiMo TTS models. Paste text, get a WAV file."
+      },
+      "jimeng": {
+        "title": "Jimeng Manual Bridge",
+        "tag": "Video",
+        "desc": "Compose Jimeng video prompts, jump to the website to generate, and re-upload the result video to local storage."
+      },
+      "fourView": {
+        "title": "Character Four Views",
+        "tag": "Character",
+        "desc": "Manage 4 reference images per character (front / three-quarter / side / back). Consistency anchor."
+      }
+    }
+  },
+  "common": {
+    "back": "← Studio Tools",
+    "loading": "Loading…",
+    "submitting": "Submitting…",
+    "copy": "Copy",
+    "copied": "Copied",
+    "clear": "Clear",
+    "clearAll": "Clear all",
+    "load": "Load",
+    "upload": "Upload",
+    "processing": "Processing…",
+    "notSet": "not set",
+    "fieldRequired": "{field} is required"
+  },
+  "mimoTts": {
+    "title": "MiMo TTS",
+    "subtitle": "OpenAI-compatible Xiaomi MiMo TTS gateway. Response is base64 WAV, playable or downloadable.",
+    "fields": {
+      "apiKey": "API Key",
+      "baseUrl": "Base URL",
+      "model": "Model",
+      "text": "Text",
+      "textPlaceholder": "Text to synthesize"
+    },
+    "models": {
+      "v25": "mimo-v2.5-tts (base)",
+      "v25voiceclone": "mimo-v2.5-tts-voiceclone",
+      "v25voicedesign": "mimo-v2.5-tts-voicedesign",
+      "v2": "mimo-v2-tts (legacy)"
+    },
+    "actions": {
+      "synthesize": "Synthesize",
+      "synthesizing": "Synthesizing…",
+      "downloadWav": "Download WAV"
+    },
+    "result": {
+      "modelLabel": "Model:",
+      "tokensLabel": "tokens"
+    },
+    "errors": {
+      "textRequired": "Text is required",
+      "apiKeyRequired": "API Key is required"
+    }
+  },
+  "jimeng": {
+    "title": "Jimeng Manual Bridge",
+    "subtitle": "Jimeng has no public API. This tool runs a human-in-the-loop flow:",
+    "subtitleSteps": "① Compose prompt → ② Open Jimeng to generate → ③ Download mp4 → ④ Upload back to local storage",
+    "compose": {
+      "heading": "① Compose prompt",
+      "fields": {
+        "subject": "Subject *",
+        "subjectHint": "e.g. an elder in a deep blue robe",
+        "action": "Action",
+        "actionHint": "e.g. slowly raises right hand to touch the porcelain vase",
+        "camera": "Camera",
+        "cameraHint": "e.g. close-up, slow medium push, follow shot",
+        "lighting": "Lighting",
+        "lightingHint": "e.g. warm side light, soft morning light",
+        "style": "Style",
+        "styleHint": "e.g. documentary realism, cinematic",
+        "duration": "Duration (seconds)",
+        "extra": "Extra",
+        "extraHint": "Additional atmosphere / detail",
+        "negative": "Negative prompt",
+        "negativeHint": "Things you do NOT want"
+      },
+      "actions": {
+        "generate": "Generate prompt",
+        "generating": "Composing…",
+        "copyPrompt": "Copy prompt",
+        "openJimeng": "Open Jimeng ↗"
+      },
+      "result": {
+        "promptHint": "Jimeng prompt (paste into the website input)",
+        "negativeHint": "Negative prompt"
+      },
+      "errors": {
+        "subjectRequired": "subject is required"
+      }
+    },
+    "upload": {
+      "heading": "② Upload mp4",
+      "subtitle": "After downloading the video from Jimeng, upload it here to local storage (MinIO / local).",
+      "fields": {
+        "tag": "Tag",
+        "tagHint": "Optional, e.g. scene-1 (alphanumeric + hyphen)",
+        "panelId": "Panel ID",
+        "panelIdHint": "Optional; if set, the video will be written into the panel's videoUrl/videoMediaId (login + project ownership required)",
+        "panelIdPlaceholder": "NovelPromotionPanel.id",
+        "file": "Video file *",
+        "fileHint": "mp4 / mov / webm, <= 200MB"
+      },
+      "actions": {
+        "upload": "Upload to storage"
+      },
+      "result": {
+        "modeLinked": "Linked to panel",
+        "modeStandalone": "Standalone",
+        "panelIdLabel": "panelId:",
+        "keyLabel": "key:",
+        "urlLabel": "url:"
+      },
+      "errors": {
+        "fileRequired": "Please choose a video file"
+      }
+    }
+  },
+  "fourView": {
+    "title": "Character Four-View Manager",
+    "subtitle": "Inspired by AIComicBuilder — manage 4 reference images per character (front / three-quarter / side / back) as a consistency anchor for storyboard panel generation.",
+    "fieldsHint": "Maps to: referenceFrontUrl / referenceThreeQuarterUrl / referenceSideUrl / referenceBackUrl",
+    "controls": {
+      "characterIdPlaceholder": "Enter characterId",
+      "loadHint": "Hint: find characterId in the workspace character page, or via Prisma Studio.",
+      "sourceLabel": "Source",
+      "sourceProject": "Project (NovelPromotionCharacter)",
+      "sourceGlobal": "Global (GlobalCharacter)"
+    },
+    "views": {
+      "front": "Front",
+      "threeQuarter": "Three-Quarter",
+      "side": "Side",
+      "back": "Back"
+    }
+  }
+}

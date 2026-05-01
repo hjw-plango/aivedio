@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { uploadObject, generateUniqueKey } from '@/lib/storage'
 import { ensureMediaObjectFromStorageKey } from '@/lib/media/service'
 import { getAuthSession } from '@/lib/api-auth'
+import {
+  isCharacterSource,
+  isViewType,
+  resolveCharacterOwnerUserId,
+  setCharacterFourViewUrl,
+  type CharacterSource,
+  type ViewType,
+} from '@/lib/studio-tools/four-view'
 
 /**
  * Four-view character reference upload (AIComicBuilder-inspired).
  *
- * GET /api/studio-tools/character-four-view?characterId=...
- *   Returns the current 4 reference URLs for the character.
- *
- * POST /api/studio-tools/character-four-view/upload  (this file)
+ * POST /api/studio-tools/character-four-view/upload
  *   FormData:
  *     characterId: string (required)
- *     viewType:    'front' | 'threeQuarter' | 'side' | 'back'  (required)
- *     file:        Blob image (png/jpg/webp, required)
- *   Returns: { url, mediaId, viewType }
+ *     viewType:    'front' | 'threeQuarter' | 'side' | 'back' (required)
+ *     source?:     'project' | 'global' (default 'project')
+ *     file:        Blob image (png/jpg/webp/gif, required)
+ *   Returns: { url, mediaId, viewType, source }
  *
- * Auth: requires user session AND project ownership of the character.
+ * Auth: user must own the character (project chain or globalCharacter.userId).
  */
 
 const MAX_IMAGE_BYTES = 30 * 1024 * 1024 // 30 MB
@@ -27,19 +32,6 @@ const ACCEPTED_TYPES = new Set([
   'image/webp',
   'image/gif',
 ])
-
-const VIEW_TYPES = ['front', 'threeQuarter', 'side', 'back'] as const
-type ViewType = (typeof VIEW_TYPES)[number]
-function isViewType(v: unknown): v is ViewType {
-  return typeof v === 'string' && (VIEW_TYPES as readonly string[]).includes(v)
-}
-
-const VIEW_FIELD: Record<ViewType, 'referenceFrontUrl' | 'referenceThreeQuarterUrl' | 'referenceSideUrl' | 'referenceBackUrl'> = {
-  front: 'referenceFrontUrl',
-  threeQuarter: 'referenceThreeQuarterUrl',
-  side: 'referenceSideUrl',
-  back: 'referenceBackUrl',
-}
 
 function pickExtension(file: File): string {
   const name = file.name || ''
@@ -52,20 +44,6 @@ function pickExtension(file: File): string {
   if (file.type === 'image/webp') return 'webp'
   if (file.type === 'image/gif') return 'gif'
   return 'jpg'
-}
-
-async function resolveCharacterOwner(characterId: string): Promise<string | null> {
-  const row = await prisma.novelPromotionCharacter.findUnique({
-    where: { id: characterId },
-    select: {
-      novelPromotionProject: {
-        select: {
-          project: { select: { userId: true } },
-        },
-      },
-    },
-  })
-  return row?.novelPromotionProject?.project?.userId ?? null
 }
 
 export async function POST(req: NextRequest) {
@@ -84,6 +62,7 @@ export async function POST(req: NextRequest) {
 
   const characterIdRaw = form.get('characterId')
   const viewTypeRaw = form.get('viewType')
+  const sourceRaw = form.get('source')
   const file = form.get('file')
 
   const characterId =
@@ -95,11 +74,15 @@ export async function POST(req: NextRequest) {
   }
   if (!isViewType(viewTypeRaw)) {
     return NextResponse.json(
-      { error: `viewType must be one of: ${VIEW_TYPES.join(', ')}` },
+      { error: 'viewType must be one of: front, threeQuarter, side, back' },
       { status: 400 },
     )
   }
   const viewType: ViewType = viewTypeRaw
+
+  const sourceCandidate = typeof sourceRaw === 'string' ? sourceRaw.trim() : 'project'
+  const source: CharacterSource = isCharacterSource(sourceCandidate) ? sourceCandidate : 'project'
+
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'file is required' }, { status: 400 })
   }
@@ -116,8 +99,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `unsupported file type: ${file.type}` }, { status: 415 })
   }
 
-  // Authorization: character must belong to the authenticated user.
-  const ownerUserId = await resolveCharacterOwner(characterId)
+  // Authorization
+  const ownerUserId = await resolveCharacterOwnerUserId(source, characterId)
   if (!ownerUserId) {
     return NextResponse.json({ error: 'Character not found' }, { status: 404 })
   }
@@ -126,7 +109,8 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = pickExtension(file)
-  const key = generateUniqueKey(`characters/${characterId}/four-view/${viewType}`, ext)
+  const prefix = `characters/${source}/${characterId}/four-view/${viewType}`
+  const key = generateUniqueKey(prefix, ext)
   const buffer = Buffer.from(await file.arrayBuffer())
   const contentType = file.type || 'image/jpeg'
 
@@ -154,16 +138,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const field = VIEW_FIELD[viewType]
-  await prisma.novelPromotionCharacter.update({
-    where: { id: characterId },
-    data: { [field]: mediaUrl },
-  })
+  await setCharacterFourViewUrl(source, characterId, viewType, mediaUrl)
 
   return NextResponse.json({
     characterId,
+    source,
     viewType,
-    field,
     url: mediaUrl,
     mediaId,
   })

@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 type ViewType = 'front' | 'threeQuarter' | 'side' | 'back'
+type CharacterSource = 'project' | 'global'
 
 interface ViewState {
   front: string | null
@@ -15,46 +17,51 @@ interface ViewState {
 interface FourViewResp {
   characterId: string
   name: string
+  source: CharacterSource
   views: ViewState
 }
 
-const VIEW_LABELS: Record<ViewType, string> = {
-  front: '正面',
-  threeQuarter: '四分之三',
-  side: '侧面',
-  back: '背面',
-}
+const VIEW_KEYS: ViewType[] = ['front', 'threeQuarter', 'side', 'back']
 
 export default function FourViewPage() {
+  const t = useTranslations('studioTools.fourView')
+  const tc = useTranslations('studioTools.common')
+
   const [characterId, setCharacterId] = useState('')
   const [pendingId, setPendingId] = useState('')
+  const [source, setSource] = useState<CharacterSource>('project')
   const [data, setData] = useState<FourViewResp | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyView, setBusyView] = useState<ViewType | null>(null)
 
-  const fetchViews = useCallback(async (id: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const resp = await fetch(`/api/studio-tools/character-four-view?characterId=${encodeURIComponent(id)}`)
-      const json = await resp.json()
-      if (!resp.ok) {
-        setError(json?.error || `HTTP ${resp.status}`)
-        setData(null)
-        return
+  const fetchViews = useCallback(
+    async (id: string, src: CharacterSource) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const resp = await fetch(
+          `/api/studio-tools/character-four-view?characterId=${encodeURIComponent(id)}&source=${src}`,
+        )
+        const json = await resp.json()
+        if (!resp.ok) {
+          setError(json?.error || `HTTP ${resp.status}`)
+          setData(null)
+          return
+        }
+        setData(json as FourViewResp)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setLoading(false)
       }
-      setData(json as FourViewResp)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
   useEffect(() => {
-    if (characterId) void fetchViews(characterId)
-  }, [characterId, fetchViews])
+    if (characterId) void fetchViews(characterId, source)
+  }, [characterId, source, fetchViews])
 
   function onLoad() {
     const id = pendingId.trim()
@@ -70,6 +77,7 @@ export default function FourViewPage() {
       const form = new FormData()
       form.append('characterId', characterId)
       form.append('viewType', view)
+      form.append('source', source)
       form.append('file', file)
       const resp = await fetch('/api/studio-tools/character-four-view/upload', {
         method: 'POST',
@@ -80,7 +88,7 @@ export default function FourViewPage() {
         setError(json?.error || `HTTP ${resp.status}`)
         return
       }
-      void fetchViews(characterId)
+      void fetchViews(characterId, source)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -94,7 +102,7 @@ export default function FourViewPage() {
     setError(null)
     try {
       const resp = await fetch(
-        `/api/studio-tools/character-four-view?characterId=${encodeURIComponent(characterId)}&viewType=${view}`,
+        `/api/studio-tools/character-four-view?characterId=${encodeURIComponent(characterId)}&viewType=${view}&source=${source}`,
         { method: 'DELETE' },
       )
       const json = await resp.json()
@@ -102,7 +110,7 @@ export default function FourViewPage() {
         setError(json?.error || `HTTP ${resp.status}`)
         return
       }
-      void fetchViews(characterId)
+      void fetchViews(characterId, source)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -111,21 +119,44 @@ export default function FourViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
+    <div className="glass-page min-h-screen px-6 py-10">
       <div className="max-w-5xl mx-auto">
-        <Link href="../studio-tools" className="text-sm text-slate-400 hover:text-slate-200">
-          ← Studio Tools
+        <Link
+          href="../studio-tools"
+          className="text-sm"
+          style={{ color: 'var(--glass-text-tertiary)' }}
+        >
+          {tc('back')}
         </Link>
-        <h1 className="text-2xl font-bold mt-2 mb-1">角色四视图管理</h1>
-        <p className="text-slate-400 text-sm mb-8">
-          来自 AIComicBuilder 设计——为角色管理 4 张参考图（正/四分之三/侧/背），用作分镜面板生成时的角色一致性锚点。
-          <br />
-          <span className="text-slate-500">
-            字段映射：referenceFrontUrl / referenceThreeQuarterUrl / referenceSideUrl / referenceBackUrl
-          </span>
+        <h1
+          className="text-2xl font-bold mt-2 mb-1"
+          style={{ color: 'var(--glass-text-primary)' }}
+        >
+          {t('title')}
+        </h1>
+        <p
+          className="text-sm mb-1"
+          style={{ color: 'var(--glass-text-tertiary)' }}
+        >
+          {t('subtitle')}
+        </p>
+        <p
+          className="text-xs mb-8"
+          style={{ color: 'var(--glass-text-tertiary)' }}
+        >
+          {t('fieldsHint')}
         </p>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-wrap gap-3 mb-6">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value as CharacterSource)}
+            className="glass-select-base"
+            style={{ minWidth: '200px' }}
+          >
+            <option value="project">{t('controls.sourceProject')}</option>
+            <option value="global">{t('controls.sourceGlobal')}</option>
+          </select>
           <input
             type="text"
             value={pendingId}
@@ -133,20 +164,27 @@ export default function FourViewPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') onLoad()
             }}
-            placeholder="输入 characterId（NovelPromotionCharacter.id）"
-            className="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 font-mono text-sm focus:border-indigo-500 focus:outline-none"
+            placeholder={t('controls.characterIdPlaceholder')}
+            className="glass-input-base flex-1 font-mono text-sm"
           />
           <button
             onClick={onLoad}
             disabled={!pendingId.trim() || loading}
-            className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 font-medium"
+            className="glass-btn-base glass-btn-primary px-5 py-2"
           >
-            {loading ? '加载中…' : '加载'}
+            {loading ? tc('loading') : tc('load')}
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-rose-950/40 border border-rose-900 text-rose-200 text-sm">
+          <div
+            className="mb-6 p-4 rounded-lg text-sm"
+            style={{
+              background: 'var(--glass-tone-danger-bg)',
+              color: 'var(--glass-tone-danger-fg)',
+              border: '1px solid var(--glass-stroke-base)',
+            }}
+          >
             {error}
           </div>
         )}
@@ -154,26 +192,40 @@ export default function FourViewPage() {
         {data && (
           <>
             <div className="flex items-baseline gap-3 mb-6">
-              <h2 className="text-lg font-semibold text-slate-200">{data.name}</h2>
-              <span className="text-xs text-slate-500 font-mono">{data.characterId}</span>
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: 'var(--glass-text-primary)' }}
+              >
+                {data.name}
+              </h2>
+              <span
+                className="text-xs font-mono"
+                style={{ color: 'var(--glass-text-tertiary)' }}
+              >
+                {data.source} · {data.characterId}
+              </span>
               <button
                 onClick={() => clearView('all')}
-                className="ml-auto px-3 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                className="glass-btn-base glass-btn-soft px-3 py-1 text-xs ml-auto"
               >
-                清空全部
+                {tc('clearAll')}
               </button>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {(Object.keys(VIEW_LABELS) as ViewType[]).map((view) => (
+              {VIEW_KEYS.map((view) => (
                 <ViewSlot
                   key={view}
                   view={view}
-                  label={VIEW_LABELS[view]}
+                  label={t(`views.${view}`)}
                   url={data.views[view]}
                   busy={busyView === view}
                   onUpload={(file) => uploadView(view, file)}
                   onClear={() => clearView(view)}
+                  notSetLabel={tc('notSet')}
+                  uploadLabel={tc('upload')}
+                  clearLabel={tc('clear')}
+                  busyLabel={tc('processing')}
                 />
               ))}
             </div>
@@ -181,9 +233,11 @@ export default function FourViewPage() {
         )}
 
         {!data && !loading && (
-          <div className="text-slate-500 text-sm">
-            提示：characterId 可在工作区角色管理页找到，或通过 Prisma Studio
-            （<span className="font-mono">npx prisma studio</span>）查询 <span className="font-mono">novel_promotion_characters</span> 表。
+          <div
+            className="text-sm"
+            style={{ color: 'var(--glass-text-tertiary)' }}
+          >
+            {t('controls.loadHint')}
           </div>
         )}
       </div>
@@ -198,6 +252,10 @@ function ViewSlot({
   busy,
   onUpload,
   onClear,
+  notSetLabel,
+  uploadLabel,
+  clearLabel,
+  busyLabel,
 }: {
   view: ViewType
   label: string
@@ -205,30 +263,56 @@ function ViewSlot({
   busy: boolean
   onUpload: (file: File) => void
   onClear: () => void
+  notSetLabel: string
+  uploadLabel: string
+  clearLabel: string
+  busyLabel: string
 }) {
   return (
-    <div className="flex flex-col rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-      <div className="aspect-square bg-slate-800 relative flex items-center justify-center text-slate-500 text-xs">
+    <div className="glass-surface flex flex-col rounded-xl overflow-hidden">
+      <div
+        className="aspect-square relative flex items-center justify-center text-xs"
+        style={{
+          background: 'var(--glass-bg-muted)',
+          color: 'var(--glass-text-tertiary)',
+        }}
+      >
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt={`${label} reference`} className="w-full h-full object-contain" />
         ) : (
-          <span>未设置</span>
+          <span>{notSetLabel}</span>
         )}
         {busy && (
-          <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center text-xs text-slate-300">
-            处理中…
+          <div
+            className="absolute inset-0 flex items-center justify-center text-xs"
+            style={{
+              background: 'rgba(0,0,0,0.6)',
+              color: 'var(--glass-text-primary)',
+            }}
+          >
+            {busyLabel}
           </div>
         )}
       </div>
       <div className="p-3 flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-medium text-slate-200">{label}</div>
-          <div className="text-[10px] text-slate-500 font-mono">{view}</div>
+          <div
+            className="text-sm font-medium"
+            style={{ color: 'var(--glass-text-primary)' }}
+          >
+            {label}
+          </div>
+          <div
+            className="text-[10px] font-mono"
+            style={{ color: 'var(--glass-text-tertiary)' }}
+          >
+            {view}
+          </div>
         </div>
         <div className="flex gap-1">
-          <label className="px-2 py-1 text-xs rounded bg-indigo-700 hover:bg-indigo-600 cursor-pointer">
-            上传
+          <label className="glass-btn-base glass-btn-primary px-2 py-1 text-xs cursor-pointer">
+            {uploadLabel}
             <input
               type="file"
               accept="image/*"
@@ -245,9 +329,9 @@ function ViewSlot({
             <button
               onClick={onClear}
               disabled={busy}
-              className="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50"
+              className="glass-btn-base glass-btn-soft px-2 py-1 text-xs"
             >
-              清除
+              {clearLabel}
             </button>
           )}
         </div>
