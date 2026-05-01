@@ -25,6 +25,7 @@ import {
     BailianAudioGenerator,
     BailianImageGenerator,
     BailianVideoGenerator,
+    MimoAudioGenerator,
     SiliconFlowAudioGenerator,
     SiliconFlowImageGenerator,
     SiliconFlowVideoGenerator,
@@ -111,6 +112,8 @@ export function createAudioGenerator(provider: string): AudioGenerator {
             return new BailianAudioGenerator()
         case 'siliconflow':
             return new SiliconFlowAudioGenerator()
+        case 'mimo':
+            return new MimoAudioGenerator()
         default:
             throw new Error(`Unknown audio generator provider: ${provider}`)
     }

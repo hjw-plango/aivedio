@@ -11,10 +11,14 @@ interface PromptResult {
 }
 
 interface UploadResult {
+  mode: 'standalone' | 'linked'
   key: string
   url: string
   sizeBytes: number
   contentType: string
+  panelId?: string
+  mediaId?: string
+  mediaUrl?: string
 }
 
 export default function JimengToolPage() {
@@ -28,6 +32,7 @@ export default function JimengToolPage() {
   const [negative, setNegative] = useState('')
 
   const [tag, setTag] = useState('')
+  const [panelId, setPanelId] = useState('')
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
@@ -98,6 +103,7 @@ export default function JimengToolPage() {
     const form = new FormData()
     form.append('file', videoFile)
     if (tag.trim()) form.append('tag', tag.trim())
+    if (panelId.trim()) form.append('panelId', panelId.trim())
 
     setUploadProgress(10)
     try {
@@ -272,6 +278,18 @@ export default function JimengToolPage() {
                 pattern="[a-zA-Z0-9_-]{0,40}"
               />
             </Field>
+            <Field
+              label="Panel ID"
+              hint="可选；填了之后视频会自动写入该 panel 的 videoUrl/videoMediaId（需登录 + 项目所有权）"
+            >
+              <input
+                type="text"
+                value={panelId}
+                onChange={(e) => setPanelId(e.target.value)}
+                className="input"
+                placeholder="NovelPromotionPanel.id"
+              />
+            </Field>
             <Field label="视频文件 *" hint="支持 mp4 / mov / webm，<= 200MB">
               <input
                 type="file"
@@ -310,6 +328,23 @@ export default function JimengToolPage() {
 
           {uploadResult && (
             <div className="mt-4 p-4 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
+              <div className="text-sm">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                    uploadResult.mode === 'linked'
+                      ? 'bg-emerald-900 text-emerald-200'
+                      : 'bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  {uploadResult.mode === 'linked' ? '已写入面板' : '独立上传'}
+                </span>
+              </div>
+              {uploadResult.mode === 'linked' && uploadResult.panelId && (
+                <div className="text-sm text-slate-300">
+                  <span className="text-slate-500">panelId:</span>{' '}
+                  <span className="font-mono">{uploadResult.panelId}</span>
+                </div>
+              )}
               <div className="text-sm text-slate-300">
                 <span className="text-slate-500">key:</span> {uploadResult.key}
               </div>

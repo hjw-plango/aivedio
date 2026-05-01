@@ -9,6 +9,7 @@ import {
 } from './base'
 import { generateBailianAudio, generateBailianImage, generateBailianVideo } from '@/lib/providers/bailian'
 import { generateSiliconFlowAudio, generateSiliconFlowImage, generateSiliconFlowVideo } from '@/lib/providers/siliconflow'
+import { generateMimoAudio } from '@/lib/providers/mimo'
 
 export class BailianImageGenerator extends BaseImageGenerator {
   protected async doGenerate(params: ImageGenerateParams): Promise<GenerateResult> {
@@ -121,6 +122,27 @@ export class SiliconFlowAudioGenerator extends BaseAudioGenerator {
         provider,
         modelId,
         modelKey,
+      },
+    })
+  }
+}
+
+export class MimoAudioGenerator extends BaseAudioGenerator {
+  protected async doGenerate(params: AudioGenerateParams): Promise<GenerateResult> {
+    const modelId = typeof params.options?.modelId === 'string' ? params.options.modelId : ''
+    const modelKey = typeof params.options?.modelKey === 'string' ? params.options.modelKey : ''
+    const provider = typeof params.options?.provider === 'string' ? params.options.provider : 'mimo'
+    const baseUrl = typeof params.options?.baseUrl === 'string' ? params.options.baseUrl : undefined
+    return await generateMimoAudio({
+      userId: params.userId,
+      text: params.text,
+      voice: params.voice,
+      rate: params.rate,
+      options: {
+        provider,
+        modelId,
+        modelKey,
+        ...(baseUrl ? { baseUrl } : {}),
       },
     })
   }

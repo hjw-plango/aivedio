@@ -92,6 +92,11 @@ model NovelPromotionCharacter {
   profileConfirmed        Boolean               @default(false)
   introduction            String?               @db.Text // 角色介绍（身份、关系、称呼映射，如"我"对应此角色）
   sourceGlobalCharacterId String? // 🆕 来源全局角色ID（复制时记录）
+  // 🆕 四视图参考集（来自 AIComicBuilder 设计：正/四分之三/侧/背），用于角色一致性参考
+  referenceFrontUrl        String?              @db.Text
+  referenceThreeQuarterUrl String?              @db.Text
+  referenceSideUrl         String?              @db.Text
+  referenceBackUrl         String?              @db.Text
   appearances             CharacterAppearance[]
   novelPromotionProject   NovelPromotionProject @relation(fields: [novelPromotionProjectId], references: [id], onDelete: Cascade)
 

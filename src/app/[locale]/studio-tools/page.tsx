@@ -24,6 +24,12 @@ export default function StudioToolsHub() {
             desc="拼装即梦视频提示词，跳转官网生成，完成后回传视频到本地存储。"
             tag="视频"
           />
+          <ToolCard
+            href="./studio-tools/four-view"
+            title="角色四视图"
+            desc="为角色管理 4 张参考图（正/四分之三/侧/背）。一致性锚点。"
+            tag="角色"
+          />
         </div>
 
         <p className="text-xs text-slate-500 mt-10">
