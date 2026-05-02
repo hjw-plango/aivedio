@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import TaskStatusInline from '@/components/task/TaskStatusInline'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
 import { ModelCapabilityDropdown } from '@/components/ui/config-modals/ModelCapabilityDropdown'
 import { AppIcon } from '@/components/ui/icons'
+import JimengPanelModal from '@/components/jimeng/JimengPanelModal'
 import type { VideoPanelRuntime } from './hooks/useVideoPanelActions'
 
 interface VideoPanelCardBodyProps {
@@ -10,6 +12,8 @@ interface VideoPanelCardBodyProps {
 }
 
 export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps) {
+  const tJimeng = useTranslations('studioTools.panelModal')
+  const [jimengOpen, setJimengOpen] = useState(false)
   const {
     t,
     tCommon,
@@ -182,6 +186,15 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                   >
                     {panel.videoUrl ? t('stage.hasSynced') : taskStatus.isVideoTaskRunning ? taskStatus.taskRunningVideoLabel : t('panelCard.generateVideo')}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setJimengOpen(true)}
+                    disabled={!panel.imageUrl || !panel.panelId}
+                    title={tJimeng('triggerHint')}
+                    className="flex-shrink-0 px-2 py-2 text-xs rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] text-[var(--glass-text-secondary)] hover:bg-[var(--glass-bg-muted)] disabled:opacity-50 transition-colors"
+                  >
+                    {tJimeng('triggerButton')}
+                  </button>
                   <div className="flex-1 min-w-0">
                     <ModelCapabilityDropdown
                       compact
@@ -285,6 +298,25 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
           </>
         )}
       </div>
+      <JimengPanelModal
+        open={jimengOpen}
+        onClose={() => setJimengOpen(false)}
+        panelId={panel.panelId || ''}
+        initialPrompt={promptEditor.localPrompt || panel.textPanel?.description || ''}
+        labels={{
+          title: tJimeng('title'),
+          promptLabel: tJimeng('promptLabel'),
+          copyPrompt: tJimeng('copyPrompt'),
+          copied: tJimeng('copied'),
+          openJimeng: tJimeng('openJimeng'),
+          uploadHint: tJimeng('uploadHint'),
+          uploadLabel: tJimeng('uploadLabel'),
+          uploading: tJimeng('uploading'),
+          linkedLabel: tJimeng('linkedLabel'),
+          closeLabel: tJimeng('closeLabel'),
+          errorLabel: tJimeng('errorLabel'),
+        }}
+      />
     </div>
   )
 }

@@ -33,7 +33,9 @@
     "upload": "Upload",
     "processing": "Processing…",
     "notSet": "not set",
-    "fieldRequired": "{field} is required"
+    "fieldRequired": "{field} is required",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "mimoTts": {
     "title": "MiMo TTS",
@@ -146,5 +148,20 @@
       "side": "Side",
       "back": "Back"
     }
+  },
+  "panelModal": {
+    "triggerButton": "Jimeng",
+    "triggerHint": "Generate this panel's video on Jimeng website, then upload back",
+    "title": "Generate this panel via Jimeng",
+    "promptLabel": "Video prompt (editable)",
+    "copyPrompt": "Copy prompt",
+    "copied": "Copied",
+    "openJimeng": "Open Jimeng ↗",
+    "uploadHint": "After Jimeng generation completes, download the mp4 and upload here. It will be written to this panel's videoUrl.",
+    "uploadLabel": "Upload mp4 to this panel",
+    "uploading": "Uploading…",
+    "linkedLabel": "✓ Linked to panel. Refresh to see.",
+    "closeLabel": "Close",
+    "errorLabel": "Failed"
   }
 }

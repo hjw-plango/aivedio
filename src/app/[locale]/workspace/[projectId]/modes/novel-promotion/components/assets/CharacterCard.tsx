@@ -22,6 +22,7 @@ import { getImageGenerationCountOptions } from '@/lib/image-generation/count'
 import { useImageGenerationCount } from '@/lib/image-generation/use-image-generation-count'
 import { AppIcon } from '@/components/ui/icons'
 import { AI_EDIT_BUTTON_CLASS, AI_EDIT_ICON_CLASS } from '@/components/ui/ai-edit-style'
+import CharacterFourViewSection from '@/components/character/CharacterFourViewSection'
 import AISparklesIcon from '@/components/ui/icons/AISparklesIcon'
 
 interface CharacterCardProps {
@@ -76,6 +77,8 @@ export default function CharacterCard({
   // 🔥 使用 mutation
   const uploadImage = useUploadProjectCharacterImage(projectId)
   const t = useTranslations('assets')
+  const tFv = useTranslations('studioTools.fourView')
+  const tFvCommon = useTranslations('studioTools.common')
   const { count: generationCount, setCount: setGenerationCount } = useImageGenerationCount('character')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pendingUploadIndex, setPendingUploadIndex] = useState<number | undefined>(undefined)
@@ -213,6 +216,29 @@ export default function CharacterCard({
 
   // 注意：不再使用 editingItems，生成/编辑状态统一由任务态 + 实体态提供
 
+  // 角色四视图：仅在主形象（primary appearance）卡片上显示，避免在多个外观重复出现。
+  // 四视图作为角色一致性锚点，在生成面板图时由后端自动注入到 referenceImages。
+  const fourViewSection = isPrimaryAppearance ? (
+    <CharacterFourViewSection
+      characterId={character.id}
+      source="project"
+      labels={{
+        sectionTitle: tFv('title'),
+        sectionHint: tFv('subtitle'),
+        front: tFv('views.front'),
+        threeQuarter: tFv('views.threeQuarter'),
+        side: tFv('views.side'),
+        back: tFv('views.back'),
+        notSet: tFvCommon('notSet'),
+        upload: tFvCommon('upload'),
+        clear: tFvCommon('clear'),
+        processing: tFvCommon('processing'),
+        expand: tFvCommon('expand'),
+        collapse: tFvCommon('collapse'),
+      }}
+    />
+  ) : null
+
   // 选择模式：显示名字+描述在上，三张图片在下
   if (showSelectionMode) {
     const selectionActions = (
@@ -317,6 +343,7 @@ export default function CharacterCard({
           isPrimaryAppearance={isPrimaryAppearance}
           voiceSettings={selectionVoiceSettings}
         />
+        {fourViewSection}
       </div>
     )
   }
@@ -486,6 +513,7 @@ export default function CharacterCard({
         onGenerate={onGenerate}
         voiceSettings={compactVoiceSettings}
       />
+      {fourViewSection}
     </div>
   )
 }

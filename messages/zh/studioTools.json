@@ -33,7 +33,9 @@
     "upload": "上传",
     "processing": "处理中…",
     "notSet": "未设置",
-    "fieldRequired": "{field} 必填"
+    "fieldRequired": "{field} 必填",
+    "expand": "展开",
+    "collapse": "收起"
   },
   "mimoTts": {
     "title": "MiMo TTS",
@@ -146,5 +148,20 @@
       "side": "侧面",
       "back": "背面"
     }
+  },
+  "panelModal": {
+    "triggerButton": "即梦",
+    "triggerHint": "用即梦官网生成视频，再回传到此面板",
+    "title": "用即梦生成此面板视频",
+    "promptLabel": "视频提示词（可编辑）",
+    "copyPrompt": "复制提示词",
+    "copied": "已复制",
+    "openJimeng": "打开即梦官网 ↗",
+    "uploadHint": "从即梦官网下载视频后，上传到这里 → 自动写入此面板的 videoUrl。",
+    "uploadLabel": "上传 mp4 到此面板",
+    "uploading": "上传中…",
+    "linkedLabel": "✓ 已写入面板，刷新后可见。",
+    "closeLabel": "关闭",
+    "errorLabel": "失败"
   }
 }

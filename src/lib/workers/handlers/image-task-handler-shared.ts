@@ -248,6 +248,30 @@ export async function collectPanelReferenceImages(projectData: NovelProjectData,
     const key = selectedUrl || imageUrls[0] || appearance.imageUrl
     const signed = toSignedUrlIfCos(key, 3600)
     if (signed) refs.push(signed)
+
+    // 🆕 Four-view 一致性锚点（来自 AIComicBuilder 设计）。
+    // 把角色的 4 张参考图（正/四分之三/侧/背）追加到 referenceImages，
+    // 让生成器在多镜头之间保持角色形象一致。已经存在的 character 类型由
+    // resolveNovelData 的默认 include 加载，包含我们扩展的四视图字段。
+    type CharacterWithFourView = {
+      referenceFrontUrl?: string | null
+      referenceThreeQuarterUrl?: string | null
+      referenceSideUrl?: string | null
+      referenceBackUrl?: string | null
+    }
+    const ch = character as unknown as CharacterWithFourView
+    const fourView = [
+      ch.referenceFrontUrl,
+      ch.referenceThreeQuarterUrl,
+      ch.referenceSideUrl,
+      ch.referenceBackUrl,
+    ]
+    for (const url of fourView) {
+      if (typeof url === 'string' && url.trim().length > 0) {
+        const fvSigned = toSignedUrlIfCos(url, 3600)
+        if (fvSigned) refs.push(fvSigned)
+      }
+    }
   }
 
   if (panel.location) {
