@@ -211,15 +211,16 @@ function readResponseMap(
   }
 
   const output: TemplateResponseMap = {}
-  const keys: Array<keyof TemplateResponseMap & string> = [
+  const pathKeys: Array<keyof TemplateResponseMap & string> = [
     'taskIdPath',
     'statusPath',
     'outputUrlPath',
     'outputUrlsPath',
+    'outputBase64Path',
     'errorPath',
   ]
 
-  for (const key of keys) {
+  for (const key of pathKeys) {
     const raw = value[key]
     if (raw === undefined || raw === null) continue
     const path = readTrimmedString(raw)
@@ -240,6 +241,20 @@ function readResponseMap(
       continue
     }
     output[key] = path
+  }
+
+  // outputMimeType is a literal string (e.g. "image/png"), not a JSONPath
+  if (value.outputMimeType !== undefined && value.outputMimeType !== null) {
+    const mime = readTrimmedString(value.outputMimeType)
+    if (!mime || !/^[a-z]+\/[a-z0-9.+-]+$/i.test(mime)) {
+      issues.push({
+        code: 'MODEL_TEMPLATE_INVALID',
+        field: `${field}.outputMimeType`,
+        message: 'outputMimeType must be a valid MIME type (e.g. image/png)',
+      })
+    } else {
+      output.outputMimeType = mime
+    }
   }
 
   return output
@@ -427,11 +442,15 @@ function validateModeSpecificRequirements(
     return
   }
 
-  if (!template.response.outputUrlPath && !template.response.outputUrlsPath) {
+  if (
+    !template.response.outputUrlPath
+    && !template.response.outputUrlsPath
+    && !template.response.outputBase64Path
+  ) {
     issues.push({
       code: 'MODEL_TEMPLATE_UNMAPPABLE',
       field: 'response',
-      message: 'sync mode requires outputUrlPath or outputUrlsPath',
+      message: 'sync mode requires outputUrlPath, outputUrlsPath, or outputBase64Path',
     })
   }
 }

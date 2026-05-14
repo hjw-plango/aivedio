@@ -120,8 +120,10 @@ export interface FirstLastFrameParams {
 
 export type VideoGenerationOptionValue = string | number | boolean
 export type VideoGenerationOptions = Record<string, VideoGenerationOptionValue>
+export type VideoDurationMode = 'auto' | 'manual'
 
 export interface BatchVideoGenerationParams {
   videoModel: string
   generationOptions?: VideoGenerationOptions
+  durationMode?: VideoDurationMode
 }

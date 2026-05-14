@@ -17,9 +17,9 @@ vi.mock('@/lib/api-config', async () => {
   return {
     ...actual,
     resolveModelSelectionOrSingle: vi.fn(async () => ({
-      provider: 'fal',
-      modelId: 'fal-audio-model',
-      modelKey: 'fal::audio-model',
+      provider: 'mimo',
+      modelId: 'mimo-v2.5-tts',
+      modelKey: 'mimo::mimo-v2.5-tts',
       mediaType: 'audio',
     })),
     getProviderKey: vi.fn((providerId: string) => providerId),
@@ -81,7 +81,7 @@ describe('system - voice generate', () => {
         locale: 'zh',
         episodeId: seeded.episode.id,
         lineId: seeded.voiceLine.id,
-        audioModel: 'fal::audio-model',
+        audioModel: 'mimo::mimo-v2.5-tts',
       },
       { params: { projectId: seeded.project.id } },
     )

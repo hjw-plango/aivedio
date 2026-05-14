@@ -151,6 +151,7 @@ const ROUTE_FILES = [
   'src/app/api/sse/route.ts',
   'src/app/api/studio-tools/character-four-view/route.ts',
   'src/app/api/studio-tools/character-four-view/upload/route.ts',
+  'src/app/api/studio-tools/jimeng/panel-package/route.ts',
   'src/app/api/studio-tools/jimeng/prompt/route.ts',
   'src/app/api/studio-tools/jimeng/upload/route.ts',
   'src/app/api/studio-tools/mimo-tts/route.ts',

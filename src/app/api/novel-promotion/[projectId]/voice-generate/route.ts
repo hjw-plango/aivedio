@@ -11,6 +11,7 @@ import { hasVoiceLineAudioOutput } from '@/lib/task/has-output'
 import { withTaskUiPayload } from '@/lib/task/ui-payload'
 import { parseModelKeyStrict } from '@/lib/model-config-contract'
 import { getProviderKey, resolveModelSelectionOrSingle } from '@/lib/api-config'
+import { pickConfiguredMimoTtsModel } from '@/lib/voice/default-audio-model'
 import {
   hasVoiceBindingForProvider,
   parseSpeakerVoiceMap,
@@ -43,6 +44,10 @@ function validateSpeakerVoiceForProvider(
   speakerVoices: SpeakerVoiceMap,
   providerKey: string,
 ): VoiceBindingValidationResult {
+  if (providerKey === 'mimo') {
+    return { ok: true }
+  }
+
   const character = matchCharacterBySpeaker(speaker, characters)
   const speakerVoice = speakerVoices[speaker]
 
@@ -82,6 +87,8 @@ function hasSpeakerVoiceForProvider(
   speakerVoices: SpeakerVoiceMap,
   providerKey: string,
 ): boolean {
+  if (providerKey === 'mimo') return true
+
   const character = matchCharacterBySpeaker(speaker, characters)
   const speakerVoice = speakerVoices[speaker]
   return hasVoiceBindingForProvider({
@@ -122,7 +129,11 @@ export const POST = apiHandler(async (
 
   const pref = await prisma.userPreference.findUnique({
     where: { userId: session.user.id },
-    select: { audioModel: true },
+    select: {
+      audioModel: true,
+      customModels: true,
+      customProviders: true,
+    },
   })
   const preferredAudioModel = typeof pref?.audioModel === 'string' ? pref.audioModel.trim() : ''
   if (preferredAudioModel && !parseModelKeyStrict(preferredAudioModel)) {
@@ -153,7 +164,8 @@ export const POST = apiHandler(async (
       code: 'MODEL_KEY_INVALID',
       field: 'audioModel'})
   }
-  const resolvedAudioModel = requestedAudioModel || projectAudioModel || preferredAudioModel
+  const configuredMimoAudioModel = requestedAudioModel ? null : pickConfiguredMimoTtsModel(pref)
+  const resolvedAudioModel = requestedAudioModel || configuredMimoAudioModel || projectAudioModel || preferredAudioModel
   const selectedResolvedAudioModel = await resolveModelSelectionOrSingle(
     session.user.id,
     resolvedAudioModel || null,

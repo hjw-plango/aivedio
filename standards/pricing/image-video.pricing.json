@@ -6011,6 +6011,42 @@
     }
   },
   {
+    "apiType": "voice",
+    "provider": "mimo",
+    "modelId": "mimo-v2.5-tts",
+    "pricing": {
+      "mode": "flat",
+      "flatAmount": 0
+    }
+  },
+  {
+    "apiType": "voice",
+    "provider": "mimo",
+    "modelId": "mimo-v2.5-tts-voiceclone",
+    "pricing": {
+      "mode": "flat",
+      "flatAmount": 0
+    }
+  },
+  {
+    "apiType": "voice",
+    "provider": "mimo",
+    "modelId": "mimo-v2.5-tts-voicedesign",
+    "pricing": {
+      "mode": "flat",
+      "flatAmount": 0
+    }
+  },
+  {
+    "apiType": "voice",
+    "provider": "mimo",
+    "modelId": "mimo-v2-tts",
+    "pricing": {
+      "mode": "flat",
+      "flatAmount": 0
+    }
+  },
+  {
     "apiType": "voice-design",
     "provider": "system",
     "modelId": "bailian-voice-design",

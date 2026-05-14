@@ -67,6 +67,10 @@ export interface Character {
   voiceId?: string | null                 // 音色 ID 或业务标识
   customVoiceUrl?: string | null          // 自定义上传的参考音频URL
   media?: MediaRef | null
+  referenceFrontUrl?: string | null       // 四视图：正面
+  referenceThreeQuarterUrl?: string | null // 四视图：四分之三
+  referenceSideUrl?: string | null        // 四视图：侧面
+  referenceBackUrl?: string | null        // 四视图：背面
   // 角色档案（两阶段生成）
   profileData?: string | null             // JSON格式的角色档案
   profileConfirmed?: boolean             // 档案是否已确认

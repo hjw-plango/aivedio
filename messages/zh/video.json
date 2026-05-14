@@ -137,6 +137,39 @@
     "asLastFrame": "作为镜头 {number} 的尾帧",
     "thenTransitionTo": "然后镜头转换到"
   },
+  "guidance": {
+    "duration": {
+      "default": "目标 {seconds} 秒",
+      "short": "目标 {seconds} 秒",
+      "standard": "目标 {seconds} 秒",
+      "long": "目标 {seconds} 秒",
+      "reason": {
+        "default": "未读到明确字幕时长，已按镜头动作估算为 {seconds} 秒。",
+        "short": "分镜原时长约 {sourceSeconds} 秒，按 {seconds} 秒短镜头处理，不要默认拉长到 5 秒。",
+        "standard": "分镜原时长约 {sourceSeconds} 秒，按 {seconds} 秒镜头节奏生成。",
+        "long": "分镜原时长约 {sourceSeconds} 秒，目标剪辑 {seconds} 秒；超过 10 秒的动作建议拆镜。"
+      }
+    },
+    "firstLastFrame": {
+      "recommended": "建议首尾帧",
+      "optional": "可选首尾帧",
+      "notRecommended": "普通生成",
+      "unavailable": "先补首帧图",
+      "linked": "已启用首尾帧",
+      "linkedReview": "已启用，建议复核",
+      "tooltip": "首尾帧会把本镜头作为首帧、下一镜头作为尾帧，适合同场景同角色的连续动作；切场、切人、时间跳跃建议普通生成。",
+      "reason": {
+        "lastPanel": "最后一镜没有下一张尾帧，按普通视频生成。",
+        "missingFrame": "当前或下一镜头缺少图片，无法稳定做首尾帧。",
+        "sceneChange": "下一镜头切换场景，独立生成再剪辑更自然。",
+        "characterChange": "下一镜头切换角色，独立生成能避免串脸。",
+        "continuousMotion": "同场景或同角色存在连续动作，首尾帧能保持运动和画面一致。",
+        "sameSceneCharacter": "同场景同角色但动作不强连续，可按画面需要决定。",
+        "sameScene": "场景或角色有延续关系，可选首尾帧增强一致性。",
+        "insufficientContinuity": "未识别出明确连续关系，默认普通生成。"
+      }
+    }
+  },
   "editor": {
     "alert": {
       "saveSuccess": "保存成功",

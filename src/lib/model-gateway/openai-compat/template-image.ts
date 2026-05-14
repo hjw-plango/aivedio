@@ -36,6 +36,47 @@ function resolveModelRef(request: OpenAICompatImageRequest): string {
   throw new Error('OPENAI_COMPAT_IMAGE_MODEL_REF_REQUIRED')
 }
 
+/**
+ * Build a short, redacted summary of an upstream image-API response when no
+ * URL/base64 can be extracted. Lands in worker error message + DB tasks.errorMessage,
+ * so future "OUTPUT_NOT_FOUND" failures self-diagnose without log mining.
+ */
+function summarizePayloadForError(payload: unknown): string {
+  if (payload === null || payload === undefined) return 'payload=null'
+  if (typeof payload !== 'object') {
+    const s = String(payload)
+    return `payload=${s.length > 120 ? `${s.slice(0, 120)}...<${s.length}>` : s}`
+  }
+  const root = payload as Record<string, unknown>
+  const topKeys = Object.keys(root).join(',')
+  const dataField = root.data
+  let dataPart = ''
+  if (Array.isArray(dataField)) {
+    const first = dataField[0]
+    if (first && typeof first === 'object') {
+      dataPart = ` data[0]Keys=[${Object.keys(first as object).join(',')}]`
+    } else {
+      dataPart = ` data[]=${dataField.length}items first=${typeof first}`
+    }
+  }
+  let errorPart = ''
+  const errorField = root.error
+  if (errorField !== undefined) {
+    try {
+      const errStr = JSON.stringify(errorField)
+      errorPart = ` error=${errStr.length > 200 ? `${errStr.slice(0, 200)}...` : errStr}`
+    } catch {
+      errorPart = ' error=<unserializable>'
+    }
+  }
+  let messagePart = ''
+  const msgField = root.message
+  if (typeof msgField === 'string' && msgField.length > 0) {
+    messagePart = ` message=${msgField.slice(0, 160)}`
+  }
+  return `topKeys=[${topKeys}]${dataPart}${errorPart}${messagePart}`
+}
+
 function readTemplateOutputUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   const urls: string[] = []
@@ -118,7 +159,39 @@ export async function generateImageViaOpenAICompatTemplate(
         imageUrl: outputUrl.trim(),
       }
     }
-    throw new Error('OPENAI_COMPAT_IMAGE_TEMPLATE_OUTPUT_NOT_FOUND')
+
+    // GPT Image series (gpt-image-1/1.5/2) always returns base64, never URLs.
+    // 1. Explicit outputBase64Path takes precedence.
+    const explicitB64 = readJsonPath(payload, request.template.response.outputBase64Path)
+    if (typeof explicitB64 === 'string' && explicitB64.trim().length > 0) {
+      const base64 = explicitB64.trim()
+      const mimeType = request.template.response.outputMimeType || 'image/png'
+      return {
+        success: true,
+        imageBase64: base64,
+        imageUrl: `data:${mimeType};base64,${base64}`,
+      }
+    }
+
+    // 2. Convention-based fallback: when the user has not configured outputBase64Path
+    // but the response carries OpenAI's standard `data[0].b64_json` (gpt-image-2 only
+    // returns base64 — there is no `data[0].url` to read), recognize it. This keeps
+    // existing legacy URL-only template configs working with gpt-image-2 / dalle-3
+    // (b64_json mode) without forcing a UI edit.
+    if (!request.template.response.outputBase64Path) {
+      const conventionalB64 = readJsonPath(payload, '$.data[0].b64_json')
+      if (typeof conventionalB64 === 'string' && conventionalB64.trim().length > 0) {
+        const base64 = conventionalB64.trim()
+        const mimeType = request.template.response.outputMimeType || 'image/png'
+        return {
+          success: true,
+          imageBase64: base64,
+          imageUrl: `data:${mimeType};base64,${base64}`,
+        }
+      }
+    }
+
+    throw new Error(`OPENAI_COMPAT_IMAGE_TEMPLATE_OUTPUT_NOT_FOUND: ${summarizePayloadForError(payload)}`)
   }
 
   const taskIdRaw = readJsonPath(payload, request.template.response.taskIdPath)

@@ -162,6 +162,10 @@ export const PRESET_MODELS: PresetModel[] = [
 
     // 音频模型
     { modelId: 'fal-ai/index-tts-2/text-to-speech', name: 'IndexTTS 2', type: 'audio', provider: 'fal' },
+    { modelId: 'mimo-v2.5-tts', name: 'MiMo TTS 2.5', type: 'audio', provider: 'mimo' },
+    { modelId: 'mimo-v2.5-tts-voiceclone', name: 'MiMo TTS 2.5 Voice Clone', type: 'audio', provider: 'mimo' },
+    { modelId: 'mimo-v2.5-tts-voicedesign', name: 'MiMo TTS 2.5 Voice Design', type: 'audio', provider: 'mimo' },
+    { modelId: 'mimo-v2-tts', name: 'MiMo TTS 2', type: 'audio', provider: 'mimo' },
     { modelId: 'qwen3-tts-vd-2026-01-26', name: 'Qwen3 TTS', type: 'audio', provider: 'bailian' },
     { modelId: 'qwen-voice-design', name: 'Qwen Voice Design', type: 'audio', provider: 'bailian' },
     // 口型同步模型
@@ -200,6 +204,7 @@ export function isPresetComingSoonModelKey(modelKey: string): boolean {
 export const PRESET_PROVIDERS: Omit<Provider, 'apiKey' | 'hasApiKey'>[] = [
     { id: 'ark', name: 'Volcengine Ark' },
     { id: 'google', name: 'Google AI Studio' },
+    { id: 'mimo', name: 'MiMo', baseUrl: 'https://api.xiaomimimo.com/v1' },
     { id: 'bailian', name: 'Alibaba Bailian' },
     { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
     { id: 'minimax', name: 'MiniMax Hailuo', baseUrl: 'https://api.minimaxi.com/v1' },
@@ -213,6 +218,7 @@ const ZH_PROVIDER_NAME_MAP: Record<string, string> = {
     vidu: '生数科技 Vidu',
     bailian: '阿里云百炼',
     siliconflow: '硅基流动',
+    mimo: '小米 MiMo',
 }
 
 function isZhLocale(locale?: string): boolean {
@@ -387,6 +393,14 @@ export const PROVIDER_TUTORIALS: ProviderTutorial[] = [
             {
                 text: 'siliconflow_step1',
                 url: 'https://cloud.siliconflow.cn/account/ak'
+            }
+        ]
+    },
+    {
+        providerId: 'mimo',
+        steps: [
+            {
+                text: 'mimo_step1'
             }
         ]
     },

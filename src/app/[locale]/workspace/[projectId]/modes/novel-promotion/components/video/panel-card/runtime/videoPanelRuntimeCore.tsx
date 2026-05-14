@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import type { VideoPanelCardShellProps } from '../types'
 import { EMPTY_RUNNING_VOICE_LINE_IDS } from './shared'
@@ -9,6 +10,7 @@ import { usePanelPlayer } from './hooks/usePanelPlayer'
 import { usePanelPromptEditor } from './hooks/usePanelPromptEditor'
 import { usePanelVoiceManager } from './hooks/usePanelVoiceManager'
 import { usePanelLipSync } from './hooks/usePanelLipSync'
+import { buildVideoPanelGuidance } from '@/lib/novel-promotion/video-panel-guidance'
 
 export function useVideoPanelActions({
   panel,
@@ -32,6 +34,7 @@ export function useVideoPanelActions({
   flModel,
   flModelOptions,
   flGenerationOptions,
+  flTouchedCapabilityFields,
   flCapabilityFields,
   flMissingCapabilityFields,
   flCustomPrompt,
@@ -104,6 +107,7 @@ export function useVideoPanelActions({
 
   const showLipSyncSection = voiceManager.hasMatchedVoiceLines
   const canLipSync = hasVisibleBaseVideo && voiceManager.hasMatchedAudio && !taskStatus.isLipSyncTaskRunning
+  const guidance = useMemo(() => buildVideoPanelGuidance({ panel, nextPanel }), [panel, nextPanel])
 
   return {
     t,
@@ -128,6 +132,7 @@ export function useVideoPanelActions({
     },
     voiceManager,
     lipSync,
+    guidance,
     layout: {
       isLinked,
       isLastFrame,
@@ -137,6 +142,7 @@ export function useVideoPanelActions({
       flModel,
       flModelOptions,
       flGenerationOptions,
+      flTouchedCapabilityFields,
       flCapabilityFields,
       flMissingCapabilityFields,
       flCustomPrompt,

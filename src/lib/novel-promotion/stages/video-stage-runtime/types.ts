@@ -4,6 +4,7 @@ import type {
   BatchVideoGenerationParams,
   Clip,
   FirstLastFrameParams,
+  VideoDurationMode,
   VideoGenerationOptions,
   Storyboard,
 } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video'
@@ -50,6 +51,7 @@ export interface VideoStageShellProps {
     firstLastFrame?: FirstLastFrameParams,
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => Promise<void>
   onGenerateAllVideos: (options?: BatchVideoGenerationParams) => Promise<void>
   onBack: () => void

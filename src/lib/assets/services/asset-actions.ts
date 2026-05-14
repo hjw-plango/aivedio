@@ -857,6 +857,10 @@ async function copyCharacterFromGlobal(input: AssetCopyInput) {
       voiceId: globalCharacter.voiceId,
       voiceType: globalCharacter.voiceType,
       customVoiceUrl: globalCharacter.customVoiceUrl,
+      referenceFrontUrl: globalCharacter.referenceFrontUrl,
+      referenceThreeQuarterUrl: globalCharacter.referenceThreeQuarterUrl,
+      referenceSideUrl: globalCharacter.referenceSideUrl,
+      referenceBackUrl: globalCharacter.referenceBackUrl,
     },
     include: { appearances: true },
   })

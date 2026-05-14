@@ -203,18 +203,19 @@ function buildVideoTaskInfo(taskType: TaskType, payload: AnyPayload): TaskBillin
 
 function buildVoiceTaskInfo(taskType: TaskType, payload: AnyPayload): TaskBillingInfo {
   const maxSeconds = Math.max(1, Math.floor(toNumber(payload?.maxSeconds, 5)))
+  const model = pickFirstString([payload?.audioModel]) || 'index-tts2'
   return {
     billable: true,
     source: 'task',
     taskType,
     apiType: 'voice',
-    model: 'index-tts2',
+    model,
     quantity: maxSeconds,
     unit: 'second',
-    maxFrozenCost: calcVoice(maxSeconds),
+    maxFrozenCost: calcVoice(maxSeconds, model),
     pricingVersion: BUILTIN_PRICING_VERSION,
     action: String(taskType),
-    metadata: { maxSeconds },
+    metadata: { maxSeconds, audioModel: model },
     status: 'quoted',
   }
 }

@@ -23,6 +23,7 @@ import { PRIMARY_APPEARANCE_INDEX } from '@/lib/constants'
 import { getImageGenerationCountOptions } from '@/lib/image-generation/count'
 import { useImageGenerationCount } from '@/lib/image-generation/use-image-generation-count'
 import { AppIcon } from '@/components/ui/icons'
+import CharacterFourViewSection from '@/components/character/CharacterFourViewSection'
 
 interface Appearance {
     id: string
@@ -68,6 +69,8 @@ export function CharacterCard({ character, onImageClick, onImageEdit, onVoiceDes
 
     const t = useTranslations('assetHub')
     const tAssets = useTranslations('assets')
+    const tFv = useTranslations('studioTools.fourView')
+    const tFvCommon = useTranslations('studioTools.common')
     const { count: generationCount, setCount: setGenerationCount } = useImageGenerationCount('character')
     const fileInputRef = useRef<HTMLInputElement>(null)
     const voiceInputRef = useRef<HTMLInputElement>(null)
@@ -120,6 +123,26 @@ export function CharacterCard({ character, onImageClick, onImageEdit, onVoiceDes
             hasOutput: !!displayImageUrl,
         })
         : null
+    const fourViewSection = isPrimaryAppearance ? (
+        <CharacterFourViewSection
+            characterId={character.id}
+            source="global"
+            labels={{
+                sectionTitle: tFv('title'),
+                sectionHint: tFv('subtitle'),
+                front: tFv('views.front'),
+                threeQuarter: tFv('views.threeQuarter'),
+                side: tFv('views.side'),
+                back: tFv('views.back'),
+                notSet: tFvCommon('notSet'),
+                upload: tFvCommon('upload'),
+                clear: tFvCommon('clear'),
+                processing: tFvCommon('processing'),
+                expand: tFvCommon('expand'),
+                collapse: tFvCommon('collapse'),
+            }}
+        />
+    ) : null
 
     // 生成图片
     const handleGenerate = (count = generationCount) => {
@@ -356,6 +379,7 @@ export function CharacterCard({ character, onImageClick, onImageEdit, onVoiceDes
                     onVoiceSelect={onVoiceSelect}
                     compact={true}
                 />
+                {fourViewSection}
 
                 {/* 删除菜单 */}
                 {showDeleteMenu && appearanceCount > 1 && (
@@ -490,6 +514,7 @@ export function CharacterCard({ character, onImageClick, onImageEdit, onVoiceDes
                     onVoiceSelect={onVoiceSelect}
                     compact={true}
                 />
+                {fourViewSection}
             </div>
 
             {/* 删除确认 */}

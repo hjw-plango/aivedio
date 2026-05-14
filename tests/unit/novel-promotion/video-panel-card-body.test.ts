@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import VideoPanelCardBody from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video/panel-card/VideoPanelCardBody'
 import type { VideoPanelRuntime } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video/panel-card/hooks/useVideoPanelActions'
 
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}))
+
 vi.mock('@/components/task/TaskStatusInline', () => ({
   default: () => React.createElement('span', null, 'task-status'),
 }))
@@ -74,6 +78,7 @@ function createRuntime(overrides: Partial<VideoPanelRuntime> = {}): VideoPanelRu
       setSelectedModel: () => undefined,
       capabilityFields: [],
       generationOptions: {},
+      touchedCapabilityFields: new Set(),
       setCapabilityValue: () => undefined,
       missingCapabilityFields: [],
       videoModelOptions: [],
@@ -105,6 +110,20 @@ function createRuntime(overrides: Partial<VideoPanelRuntime> = {}): VideoPanelRu
       handleStartLipSync: () => undefined,
       executingLipSync: false,
     },
+    guidance: {
+      duration: {
+        sourceSeconds: 3,
+        recommendedSeconds: 3,
+        bucket: 'standard',
+        isEstimated: false,
+      },
+      firstLastFrame: {
+        status: 'recommended',
+        reason: 'continuousMotion',
+        canLink: true,
+        score: 3,
+      },
+    },
     layout: {
       isLinked: true,
       isLastFrame: true,
@@ -122,6 +141,7 @@ function createRuntime(overrides: Partial<VideoPanelRuntime> = {}): VideoPanelRu
       flModel: 'veo-3.1',
       flModelOptions: [],
       flGenerationOptions: {},
+      flTouchedCapabilityFields: new Set(),
       flCapabilityFields: [],
       flMissingCapabilityFields: [],
       flCustomPrompt: '',

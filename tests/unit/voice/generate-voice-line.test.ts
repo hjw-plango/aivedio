@@ -24,6 +24,7 @@ const toFetchableUrlMock = vi.hoisted(() => vi.fn((url: string) => url))
 const uploadObjectMock = vi.hoisted(() => vi.fn(async () => 'voice/storage/line-1.wav'))
 const resolveStorageKeyFromMediaValueMock = vi.hoisted(() => vi.fn())
 const synthesizeWithBailianTTSMock = vi.hoisted(() => vi.fn())
+const synthesizeWithMimoTTSMock = vi.hoisted(() => vi.fn())
 const falSubscribeMock = vi.hoisted(() => vi.fn())
 const getProviderConfigMock = vi.hoisted(() => vi.fn())
 
@@ -55,6 +56,10 @@ vi.mock('@/lib/media/service', () => ({
 
 vi.mock('@/lib/providers/bailian', () => ({
   synthesizeWithBailianTTS: synthesizeWithBailianTTSMock,
+}))
+
+vi.mock('@/lib/providers/mimo', () => ({
+  synthesizeWithMimoTTS: synthesizeWithMimoTTSMock,
 }))
 
 vi.mock('@fal-ai/client', () => ({
@@ -140,6 +145,54 @@ describe('generate voice line with bailian provider', () => {
       storageKey: 'voice/storage/line-1.wav',
       audioDuration: 1,
     })
+  })
+
+  it('uses mimo without requiring a speaker voice binding', async () => {
+    prismaMock.novelPromotionVoiceLine.findUnique.mockResolvedValueOnce({
+      id: 'line-1',
+      episodeId: 'episode-1',
+      speaker: 'Narrator',
+      content: 'hello world',
+      emotionPrompt: 'calm narrator voice',
+      emotionStrength: null,
+    })
+    prismaMock.novelPromotionEpisode.findUnique.mockResolvedValueOnce({
+      speakerVoices: '{}',
+    })
+    resolveModelSelectionOrSingleMock.mockResolvedValueOnce({
+      provider: 'mimo',
+      modelId: 'mimo-v2.5-tts',
+      modelKey: 'mimo::mimo-v2.5-tts',
+      mediaType: 'audio',
+    })
+    getProviderConfigMock.mockResolvedValueOnce({
+      id: 'mimo',
+      name: 'MiMo',
+      apiKey: 'mimo-key',
+      baseUrl: 'https://api.xiaomimimo.com/v1',
+    })
+    synthesizeWithMimoTTSMock.mockResolvedValueOnce({
+      success: true,
+      audioData: Buffer.from([1, 2, 3, 4]),
+    })
+
+    const result = await generateVoiceLine({
+      projectId: 'project-1',
+      episodeId: 'episode-1',
+      lineId: 'line-1',
+      userId: 'user-1',
+      audioModel: 'mimo::mimo-v2.5-tts',
+    })
+
+    expect(getProviderConfigMock).toHaveBeenCalledWith('user-1', 'mimo')
+    expect(synthesizeWithMimoTTSMock).toHaveBeenCalledWith({
+      text: 'hello world',
+      modelId: 'mimo-v2.5-tts',
+      baseUrl: 'https://api.xiaomimimo.com/v1',
+      stylePrompt: 'calm narrator voice',
+    }, 'mimo-key')
+    expect(synthesizeWithBailianTTSMock).not.toHaveBeenCalled()
+    expect(result.audioUrl).toBe('signed://voice/storage/line-1.wav')
   })
 
   it('fails explicitly when bailian speaker binding only has uploaded audio', async () => {

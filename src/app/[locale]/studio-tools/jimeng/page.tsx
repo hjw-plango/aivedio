@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import { copyTextToClipboard } from '@/lib/browser/clipboard'
 
 interface PromptResult {
   prompt: string
@@ -87,11 +88,12 @@ export default function JimengToolPage() {
 
   async function onCopy(text: string) {
     try {
-      await navigator.clipboard.writeText(text)
+      setPromptError(null)
+      await copyTextToClipboard(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // ignore
+      setPromptError(t('compose.errors.copyFailed'))
     }
   }
 

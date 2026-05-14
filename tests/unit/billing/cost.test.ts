@@ -236,5 +236,6 @@ describe('billing/cost', () => {
 
   it('calculates voice costs from quantities', () => {
     expect(calcVoice(30)).toBeGreaterThan(0)
+    expect(calcVoice(30, 'mimo::mimo-v2.5-tts')).toBe(0)
   })
 })

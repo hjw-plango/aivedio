@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { WorkspaceStageRuntimeValue } from '../WorkspaceStageRuntimeContext'
 import type { CapabilitySelections, ModelCapabilities } from '@/lib/model-config-contract'
 import type { VideoPricingTier } from '@/lib/model-pricing/video-tier'
-import type { BatchVideoGenerationParams, VideoGenerationOptions } from '../components/video'
+import type { BatchVideoGenerationParams, VideoGenerationOptions, VideoDurationMode } from '../components/video'
 
 interface UseWorkspaceStageRuntimeParams {
   assetsLoading: boolean
@@ -45,6 +45,7 @@ interface UseWorkspaceStageRuntimeParams {
     },
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => Promise<void>
   handleGenerateAllVideos: (options?: BatchVideoGenerationParams) => Promise<void>
   handleUpdateVideoPrompt: (

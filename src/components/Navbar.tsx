@@ -118,14 +118,6 @@ export default function Navbar() {
                     {t('assetHub')}
                   </Link>
                   <Link
-                    href={{ pathname: '/studio-tools' }}
-                    className="text-sm text-[var(--glass-text-secondary)] hover:text-[var(--glass-text-primary)] font-medium transition-colors flex items-center gap-1"
-                    title={t('studioTools')}
-                  >
-                    <AppIcon name="sparkles" className="w-4 h-4" />
-                    {t('studioTools')}
-                  </Link>
-                  <Link
                     href={{ pathname: '/profile' }}
                     className="text-sm text-[var(--glass-text-secondary)] hover:text-[var(--glass-text-primary)] font-medium transition-colors flex items-center gap-1"
                     title={t('profile')}

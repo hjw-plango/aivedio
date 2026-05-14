@@ -1,4 +1,4 @@
-import type { VideoPanel, MatchedVoiceLine, VideoModelOption, FirstLastFrameParams, VideoGenerationOptions } from '../types'
+import type { VideoPanel, MatchedVoiceLine, VideoModelOption, FirstLastFrameParams, VideoGenerationOptions, VideoDurationMode } from '../types'
 import type { CapabilitySelections, CapabilityValue } from '@/lib/model-config-contract'
 
 export interface VideoPanelCardShellProps {
@@ -23,6 +23,7 @@ export interface VideoPanelCardShellProps {
   flModel: string
   flModelOptions: VideoModelOption[]
   flGenerationOptions: VideoGenerationOptions
+  flTouchedCapabilityFields: ReadonlySet<string>
   flCapabilityFields: Array<{
     field: string
     label: string
@@ -44,6 +45,7 @@ export interface VideoPanelCardShellProps {
     firstLastFrame?: FirstLastFrameParams,
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => void
   onUpdatePanelVideoModel: (storyboardId: string, panelIndex: number, model: string) => void
   onToggleLink: (panelKey: string, storyboardId: string, panelIndex: number) => void
@@ -59,6 +61,7 @@ export interface VideoPanelCardShellProps {
     panelKey: string,
     generationOptions?: VideoGenerationOptions,
     firstPanelId?: string,
+    durationMode?: VideoDurationMode,
   ) => void
   onPreviewImage?: (imageUrl: string) => void
 }

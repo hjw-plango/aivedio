@@ -715,11 +715,11 @@ export function calcVideoByTokens(
   return calcSeedance2VideoCostFromTokens(model, totalTokens, metadata)
 }
 
-export function calcVoice(durationSeconds: number): number {
+export function calcVoice(durationSeconds: number, model = DEFAULT_VOICE_MODEL_ID): number {
   const seconds = Math.max(0, Number(durationSeconds) || 0)
   const unitPrice = resolveModelPriceStrict({
     apiType: 'voice',
-    model: DEFAULT_VOICE_MODEL_ID,
+    model,
   })
   return unitPrice * seconds * getMarkup('voice')
 }

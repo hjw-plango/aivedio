@@ -20,6 +20,7 @@ export interface TestProviderResult {
 type PresetProviderType = 'ark' | 'google' | 'openrouter' | 'minimax' | 'fal' | 'vidu'
   | 'bailian'
   | 'siliconflow'
+  | 'mimo'
 type CompatibleProviderType = 'openai-compatible' | 'gemini-compatible'
 
 type TestProviderPayload = {
@@ -829,6 +830,52 @@ async function testBailianProvider(apiKey: string): Promise<TestProviderResult> 
 }
 
 // ---------------------------------------------------------------------------
+// MiMo (zero-inference probe)
+// ---------------------------------------------------------------------------
+
+async function testMimoProvider(apiKey: string): Promise<TestProviderResult> {
+  const steps: TestStep[] = []
+  const headers = {
+    'api-key': apiKey,
+    Authorization: `Bearer ${apiKey}`,
+  }
+
+  try {
+    const modelResponse = await fetch('https://api.xiaomimimo.com/v1/models', {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!modelResponse.ok) {
+      const fail = classifyProbeFailure(modelResponse.status)
+      const detail = await modelResponse.text().catch(() => '')
+      steps.push({
+        name: 'models',
+        status: fail.status,
+        message: fail.message,
+        detail: detail.slice(0, 500),
+      })
+      return { success: false, steps }
+    }
+    const modelData = await modelResponse.json() as { data?: Array<{ id?: string }> }
+    const count = Array.isArray(modelData.data) ? modelData.data.length : 0
+    steps.push({
+      name: 'models',
+      status: 'pass',
+      message: `Found ${count} models`,
+    })
+    return { success: true, steps }
+  } catch (error) {
+    steps.push({
+      name: 'models',
+      status: 'fail',
+      message: toNetworkErrorMessage(error),
+    })
+    return { success: false, steps }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -871,6 +918,8 @@ export async function testProviderConnection(payload: TestProviderPayload): Prom
       return testBailianProvider(apiKey)
     case 'siliconflow':
       return testSiliconFlowProvider(apiKey)
+    case 'mimo':
+      return testMimoProvider(apiKey)
     default:
       return {
         success: false,

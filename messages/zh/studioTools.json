@@ -101,7 +101,8 @@
         "negativeHint": "负面提示"
       },
       "errors": {
-        "subjectRequired": "subject (主体描述) 必填"
+        "subjectRequired": "subject (主体描述) 必填",
+        "copyFailed": "浏览器禁止自动复制，请手动选中文本复制。"
       }
     },
     "upload": {
@@ -155,8 +156,17 @@
     "title": "用即梦生成此面板视频",
     "promptLabel": "视频提示词（可编辑）",
     "copyPrompt": "复制提示词",
+    "copyPackage": "复制分镜包",
     "copied": "已复制",
+    "packageCopied": "分镜包已复制",
+    "copyFailed": "浏览器禁止自动复制，请手动选中文本复制。",
     "openJimeng": "打开即梦官网 ↗",
+    "guidanceTitle": "生成建议",
+    "durationAdvice": "视频时长",
+    "frameAdvice": "首尾帧",
+    "referenceTitle": "即梦参考图包",
+    "packageLoading": "正在整理提示词和参考图…",
+    "noReferences": "暂无可用参考图，仅复制提示词。",
     "uploadHint": "从即梦官网下载视频后，上传到这里 → 自动写入此面板的 videoUrl。",
     "uploadLabel": "上传 mp4 到此面板",
     "uploading": "上传中…",

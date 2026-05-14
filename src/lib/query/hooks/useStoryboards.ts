@@ -51,10 +51,12 @@ export interface StoryboardData {
 
 type VideoGenerationOptionValue = string | number | boolean
 type VideoGenerationOptions = Record<string, VideoGenerationOptionValue>
+type VideoDurationMode = 'auto' | 'manual'
 
 interface BatchVideoGenerationParams {
     videoModel: string
     generationOptions?: VideoGenerationOptions
+    durationMode?: VideoDurationMode
 }
 
 // ============ 查询 Hooks ============
@@ -159,6 +161,7 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
             panelId?: string
             videoModel: string
             generationOptions?: VideoGenerationOptions
+            durationMode?: VideoDurationMode
             firstLastFrame?: {
                 lastFrameStoryboardId: string
                 lastFramePanelIndex: number
@@ -180,6 +183,7 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
                 }
                 videoModel: string
                 generationOptions?: VideoGenerationOptions
+                durationMode?: VideoDurationMode
             } = {
                 storyboardId: params.storyboardId,
                 panelIndex: params.panelIndex,
@@ -193,6 +197,9 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
 
             if (params.generationOptions && typeof params.generationOptions === 'object') {
                 requestBody.generationOptions = params.generationOptions
+            }
+            if (params.durationMode) {
+                requestBody.durationMode = params.durationMode
             }
 
             const res = await apiFetch(`/api/novel-promotion/${projectId}/generate-video`, {
@@ -251,6 +258,7 @@ export function useBatchGenerateVideos(projectId: string | null, episodeId: stri
                 episodeId: string
                 videoModel: string
                 generationOptions?: VideoGenerationOptions
+                durationMode?: VideoDurationMode
             } = {
                 all: true,
                 episodeId,
@@ -258,6 +266,9 @@ export function useBatchGenerateVideos(projectId: string | null, episodeId: stri
             }
             if (params.generationOptions && typeof params.generationOptions === 'object') {
                 requestBody.generationOptions = params.generationOptions
+            }
+            if (params.durationMode) {
+                requestBody.durationMode = params.durationMode
             }
 
             const res = await apiFetch(`/api/novel-promotion/${projectId}/generate-video`, {

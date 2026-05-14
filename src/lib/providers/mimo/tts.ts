@@ -37,6 +37,8 @@ export async function synthesizeWithMimoTTS(
       apiKey,
       baseUrl: input.baseUrl,
       model: input.modelId,
+      stylePrompt: input.stylePrompt ?? undefined,
+      voice: input.voice ?? undefined,
     })
     return {
       success: true,

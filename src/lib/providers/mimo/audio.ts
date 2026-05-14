@@ -50,6 +50,7 @@ export async function generateMimoAudio(params: MimoAudioGenerateParams): Promis
       text,
       modelId: params.options.modelId,
       baseUrl: params.options.baseUrl || baseUrl,
+      voice: params.voice,
     },
     apiKey,
   )

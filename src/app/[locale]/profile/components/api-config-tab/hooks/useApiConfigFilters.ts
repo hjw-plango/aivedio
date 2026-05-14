@@ -24,6 +24,7 @@ const DEFAULT_AUDIO_EXCLUDED_MODEL_IDS = new Set([
 const MODEL_PROVIDER_KEYS = [
   'ark',
   'google',
+  'mimo',
   'bailian',
   'openrouter',
   'minimax',

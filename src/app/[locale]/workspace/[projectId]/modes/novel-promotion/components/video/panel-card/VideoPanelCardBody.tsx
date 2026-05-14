@@ -6,6 +6,7 @@ import { ModelCapabilityDropdown } from '@/components/ui/config-modals/ModelCapa
 import { AppIcon } from '@/components/ui/icons'
 import JimengPanelModal from '@/components/jimeng/JimengPanelModal'
 import type { VideoPanelRuntime } from './hooks/useVideoPanelActions'
+import { applyRecommendedVideoDurationOption } from '@/lib/novel-promotion/video-panel-guidance'
 
 interface VideoPanelCardBodyProps {
   runtime: VideoPanelRuntime
@@ -54,15 +55,82 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
   const showsOutgoingLinkBadge = layout.isLinked && !!layout.nextPanel
   const showsPromptEditor = !layout.isLastFrame || layout.isLinked
   const showsFirstLastFrameActions = layout.isLinked && !!layout.nextPanel
+  const tVideo = t as unknown as (key: string, values?: Record<string, string | number>) => string
+  const formatSeconds = (value: number | null): string => {
+    if (typeof value !== 'number') return ''
+    return Number.isInteger(value) ? String(value) : value.toFixed(1)
+  }
+  const durationGuidance = runtime.guidance.duration
+  const firstLastFrameGuidance = runtime.guidance.firstLastFrame
+  const durationLabel = tVideo(`guidance.duration.${durationGuidance.bucket}`, {
+    seconds: durationGuidance.recommendedSeconds,
+    sourceSeconds: formatSeconds(durationGuidance.sourceSeconds),
+  })
+  const durationReason = tVideo(`guidance.duration.reason.${durationGuidance.bucket}`, {
+    seconds: durationGuidance.recommendedSeconds,
+    sourceSeconds: formatSeconds(durationGuidance.sourceSeconds),
+  })
+  const firstLastFrameLabel = layout.isLinked
+    ? tVideo(firstLastFrameGuidance.status === 'recommended' || firstLastFrameGuidance.status === 'optional'
+      ? 'guidance.firstLastFrame.linked'
+      : 'guidance.firstLastFrame.linkedReview')
+    : tVideo(`guidance.firstLastFrame.${firstLastFrameGuidance.status}`)
+  const firstLastFrameReason = tVideo(`guidance.firstLastFrame.reason.${firstLastFrameGuidance.reason}`)
+  const firstLastFrameTone = layout.isLinked
+    ? 'bg-[var(--glass-tone-info-bg)] text-[var(--glass-tone-info-fg)] border-[var(--glass-stroke-focus)]'
+    : firstLastFrameGuidance.status === 'recommended'
+      ? 'bg-[var(--glass-tone-success-bg)] text-[var(--glass-tone-success-fg)] border-[var(--glass-stroke-success)]'
+      : firstLastFrameGuidance.status === 'optional'
+        ? 'bg-[var(--glass-tone-warning-bg)] text-[var(--glass-tone-warning-fg)] border-[var(--glass-stroke-warning)]'
+        : 'bg-[var(--glass-bg-muted)] text-[var(--glass-text-tertiary)] border-[var(--glass-stroke-base)]'
+  const firstLastFrameIconName =
+    layout.isLinked || firstLastFrameGuidance.status === 'recommended' || firstLastFrameGuidance.status === 'optional'
+      ? 'link'
+      : 'unplug'
+  const normalDurationField = videoModel.capabilityFields.find((field) => field.field === 'duration')
+  const firstLastFrameDurationField = layout.flCapabilityFields.find((field) => field.field === 'duration')
+  const normalGenerationOptions = videoModel.touchedCapabilityFields.has('duration')
+    ? videoModel.generationOptions
+    : applyRecommendedVideoDurationOption({
+      generationOptions: videoModel.generationOptions,
+      durationOptions: normalDurationField?.options.filter((option) => !normalDurationField.disabledOptions?.includes(option)),
+      guidance: runtime.guidance,
+    })
+  const firstLastFrameGenerationOptions = layout.flTouchedCapabilityFields.has('duration')
+    ? layout.flGenerationOptions
+    : applyRecommendedVideoDurationOption({
+      generationOptions: layout.flGenerationOptions,
+      durationOptions: firstLastFrameDurationField?.options.filter((option) => !firstLastFrameDurationField.disabledOptions?.includes(option)),
+      guidance: runtime.guidance,
+    })
+  const normalDurationMode = videoModel.touchedCapabilityFields.has('duration') ? 'manual' : 'auto'
+  const firstLastFrameDurationMode = layout.flTouchedCapabilityFields.has('duration') ? 'manual' : 'auto'
 
   return (
     <div className="p-4 space-y-2">
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between gap-2 text-xs">
         <span className="px-2 py-0.5 bg-[var(--glass-tone-info-bg)] text-[var(--glass-tone-info-fg)] rounded font-medium">{panel.textPanel?.shot_type || t('panelCard.unknownShotType')}</span>
-        {panel.textPanel?.duration && <span className="text-[var(--glass-text-tertiary)]">{panel.textPanel.duration}{t('promptModal.duration')}</span>}
+        <span className="inline-flex items-center gap-1 rounded border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-surface)] px-2 py-0.5 font-medium text-[var(--glass-text-secondary)]">
+          <AppIcon name="clock" className="h-3 w-3" />
+          {durationLabel}
+        </span>
       </div>
 
       <p className="text-sm text-[var(--glass-text-secondary)] line-clamp-2">{panel.textPanel?.description}</p>
+
+      <div className="rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-muted)] px-2.5 py-2 text-[11px]">
+        <div className="flex items-start gap-1.5 text-[var(--glass-text-secondary)]">
+          <AppIcon name="clock" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+          <span className="min-w-0">{durationReason}</span>
+        </div>
+        <div className="mt-1.5 flex items-start gap-1.5">
+          <span className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${firstLastFrameTone}`}>
+            <AppIcon name={firstLastFrameIconName} className="h-3 w-3" />
+            {firstLastFrameLabel}
+          </span>
+          <span className="min-w-0 pt-0.5 text-[var(--glass-text-tertiary)]">{firstLastFrameReason}</span>
+        </div>
+      </div>
 
       <div className="mt-3 pt-3 border-t border-[var(--glass-stroke-base)]">
         {(showsIncomingLinkBadge || showsOutgoingLinkBadge) && (
@@ -130,8 +198,9 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                       linkedNextPanel.storyboardId,
                       linkedNextPanel.panelIndex,
                       panelKey,
-                      layout.flGenerationOptions,
+                      firstLastFrameGenerationOptions,
                       panel.panelId,
+                      firstLastFrameDurationMode,
                     )}
                     disabled={
                       taskStatus.isVideoTaskRunning
@@ -173,8 +242,9 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                         panel.panelIndex,
                         videoModel.selectedModel,
                         undefined,
-                        videoModel.generationOptions,
+                        normalGenerationOptions,
                         panel.panelId,
+                        normalDurationMode,
                       )}
                     disabled={
                       taskStatus.isVideoTaskRunning
@@ -307,8 +377,17 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
           title: tJimeng('title'),
           promptLabel: tJimeng('promptLabel'),
           copyPrompt: tJimeng('copyPrompt'),
+          copyPackage: tJimeng('copyPackage'),
           copied: tJimeng('copied'),
+          packageCopied: tJimeng('packageCopied'),
+          copyFailed: tJimeng('copyFailed'),
           openJimeng: tJimeng('openJimeng'),
+          guidanceTitle: tJimeng('guidanceTitle'),
+          durationAdvice: tJimeng('durationAdvice'),
+          frameAdvice: tJimeng('frameAdvice'),
+          referenceTitle: tJimeng('referenceTitle'),
+          packageLoading: tJimeng('packageLoading'),
+          noReferences: tJimeng('noReferences'),
           uploadHint: tJimeng('uploadHint'),
           uploadLabel: tJimeng('uploadLabel'),
           uploading: tJimeng('uploading'),

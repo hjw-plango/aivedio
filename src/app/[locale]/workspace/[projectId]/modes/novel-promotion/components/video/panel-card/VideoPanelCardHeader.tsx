@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import TaskStatusOverlay from '@/components/task/TaskStatusOverlay'
 import { MediaImageWithLoading } from '@/components/media/MediaImageWithLoading'
+import { applyRecommendedVideoDurationOption } from '@/lib/novel-promotion/video-panel-guidance'
 
 import type { VideoPanelRuntime } from './hooks/useVideoPanelActions'
 import { AppIcon } from '@/components/ui/icons'
@@ -32,6 +33,23 @@ export default function VideoPanelCardHeader({ runtime }: VideoPanelCardHeaderPr
 
   const hasVisibleBaseVideo = !!media.baseVideoUrl
   const showFirstLastFrameSwitch = layout.hasNext
+  const tVideo = t as unknown as (key: string) => string
+  const firstLastFrameGuidance = runtime.guidance.firstLastFrame
+  const firstLastFrameLabel = layout.isLinked
+    ? tVideo(firstLastFrameGuidance.status === 'recommended' || firstLastFrameGuidance.status === 'optional'
+      ? 'guidance.firstLastFrame.linked'
+      : 'guidance.firstLastFrame.linkedReview')
+    : tVideo(`guidance.firstLastFrame.${firstLastFrameGuidance.status}`)
+  const firstLastFrameReason = tVideo(`guidance.firstLastFrame.reason.${firstLastFrameGuidance.reason}`)
+  const normalDurationField = videoModel.capabilityFields.find((field) => field.field === 'duration')
+  const normalGenerationOptions = videoModel.touchedCapabilityFields.has('duration')
+    ? videoModel.generationOptions
+    : applyRecommendedVideoDurationOption({
+      generationOptions: videoModel.generationOptions,
+      durationOptions: normalDurationField?.options.filter((option) => !normalDurationField.disabledOptions?.includes(option)),
+      guidance: runtime.guidance,
+    })
+  const normalDurationMode = videoModel.touchedCapabilityFields.has('duration') ? 'manual' : 'auto'
 
   return (
     <div className="bg-[var(--glass-bg-muted)] flex items-center justify-center relative" style={{ aspectRatio: player.cssAspectRatio }}>
@@ -96,14 +114,22 @@ export default function VideoPanelCardHeader({ runtime }: VideoPanelCardHeaderPr
                 : 'bg-[var(--glass-bg-surface)] text-[var(--glass-text-secondary)] hover:bg-[var(--glass-tone-info-bg)] hover:text-[var(--glass-tone-info-fg)]'
                 }`}
             >
-              <AppIcon name="unplug" size={16} />
+              <AppIcon name={layout.isLinked ? 'unplug' : 'link'} size={16} />
             </button>
 
             {/* 自定义 Tooltip */}
             {showTooltip && (
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none">
-                <div className="bg-[var(--glass-bg-surface-strong)] text-[var(--glass-text-primary)] text-xs rounded-lg px-3 py-1.5 shadow-[var(--glass-shadow-md)] whitespace-nowrap border border-[var(--glass-stroke-base)]">
-                  {layout.isLinked ? t('firstLastFrame.unlinkAction') : t('firstLastFrame.linkToNext')}
+                <div className="w-72 bg-[var(--glass-bg-surface-strong)] text-[var(--glass-text-primary)] text-xs rounded-lg px-3 py-2 shadow-[var(--glass-shadow-md)] border border-[var(--glass-stroke-base)]">
+                  <div className="font-medium">
+                    {layout.isLinked ? t('firstLastFrame.unlinkAction') : t('firstLastFrame.linkToNext')}
+                  </div>
+                  <div className="mt-1 text-[11px] leading-4 text-[var(--glass-text-secondary)]">
+                    {firstLastFrameLabel}: {firstLastFrameReason}
+                  </div>
+                  <div className="mt-1 text-[11px] leading-4 text-[var(--glass-text-tertiary)]">
+                    {t('guidance.firstLastFrame.tooltip')}
+                  </div>
                   <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[var(--glass-bg-surface-strong)]" />
                 </div>
               </div>
@@ -140,8 +166,9 @@ export default function VideoPanelCardHeader({ runtime }: VideoPanelCardHeaderPr
               panel.panelIndex,
               videoModel.selectedModel,
               undefined,
-              videoModel.generationOptions,
+              normalGenerationOptions,
               panel.panelId,
+              normalDurationMode,
             )}
           disabled={
             taskStatus.isVideoTaskRunning

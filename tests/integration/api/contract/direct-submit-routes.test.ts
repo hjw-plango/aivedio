@@ -254,7 +254,7 @@ vi.mock('@/lib/media/outbound-image', () => ({
   })),
 }))
 vi.mock('@/lib/model-capabilities/lookup', () => ({
-  resolveBuiltinCapabilitiesByModelKey: vi.fn(() => ({ video: { firstlastframe: true } })),
+  resolveBuiltinCapabilitiesByModelKey: vi.fn(() => ({ video: { firstlastframe: true, durationOptions: [1, 2, 3, 4, 5] } })),
 }))
 vi.mock('@/lib/model-pricing/lookup', () => ({
   resolveBuiltinPricing: vi.fn(() => ({ status: 'ok' })),
@@ -421,6 +421,31 @@ const DIRECT_CASES: ReadonlyArray<DirectRouteCase> = [
     },
   },
   {
+    routeFile: 'src/app/api/novel-promotion/[projectId]/generate-video/route.ts',
+    body: {
+      videoModel: 'ark::doubao-seedance-2-0-260128',
+      storyboardId: 'storyboard-1',
+      panelIndex: 0,
+      durationMode: 'auto',
+      generationOptions: {
+        resolution: '720p',
+        duration: 5,
+      },
+    },
+    params: { projectId: 'project-1' },
+    expectedTaskType: TASK_TYPE.VIDEO_PANEL,
+    expectedTargetType: 'NovelPromotionPanel',
+    expectedProjectId: 'project-1',
+    expectedPayloadSubset: {
+      videoModel: 'ark::doubao-seedance-2-0-260128',
+      durationMode: 'auto',
+      generationOptions: {
+        resolution: '720p',
+        duration: 2,
+      },
+    },
+  },
+  {
     routeFile: 'src/app/api/novel-promotion/[projectId]/insert-panel/route.ts',
     body: { storyboardId: 'storyboard-1', insertAfterPanelId: 'panel-ins' },
     params: { projectId: 'project-1' },
@@ -561,7 +586,7 @@ describe('api contract - direct submit routes (behavior)', () => {
   })
 
   it('keeps expected coverage size', () => {
-    expect(DIRECT_CASES.length).toBe(20)
+    expect(DIRECT_CASES.length).toBe(21)
   })
 
   for (const routeCase of DIRECT_CASES) {

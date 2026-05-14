@@ -72,7 +72,8 @@ export function usePanelVideoModel({
   const [generationOptions, setGenerationOptions] = useState<VideoGenerationOptions>(() =>
     readSelectionForModel(capabilityOverrides, defaultVideoModel || ''),
   )
-  const videoModelOptions = userVideoModels ?? []
+  const [touchedCapabilityFields, setTouchedCapabilityFields] = useState<Set<string>>(new Set())
+  const videoModelOptions = useMemo(() => userVideoModels ?? [], [userVideoModels])
   const selectedOption = videoModelOptions.find((option) => option.value === selectedModel)
   const pricingTiers = useMemo(
     () => projectVideoPricingTiersByFixedSelections({
@@ -87,6 +88,10 @@ export function usePanelVideoModel({
   useEffect(() => {
     setSelectedModel(defaultVideoModel || '')
   }, [defaultVideoModel])
+
+  useEffect(() => {
+    setTouchedCapabilityFields(new Set())
+  }, [selectedModel])
 
   useEffect(() => {
     if (!selectedModel) {
@@ -177,6 +182,7 @@ export function usePanelVideoModel({
     if (!definitionField || definitionField.options.length === 0) return
     const parsedValue = parseByOptionType(rawValue, definitionField.options[0])
     if (!definitionField.options.includes(parsedValue)) return
+    setTouchedCapabilityFields((previous) => new Set(previous).add(field))
     setGenerationOptions((previous) => ({
       ...normalizeVideoGenerationSelections({
         definitions: capabilityDefinitions,
@@ -194,6 +200,7 @@ export function usePanelVideoModel({
     selectedModel,
     setSelectedModel,
     generationOptions,
+    touchedCapabilityFields,
     capabilityFields,
     setCapabilityValue,
     missingCapabilityFields,

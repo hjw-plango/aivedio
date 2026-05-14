@@ -11,7 +11,9 @@ import { synthesizeMimoTTS } from '@/lib/studio-tools/mimo-tts'
  *     text: string,        // required
  *     apiKey: string,      // required (passed through, never stored)
  *     baseUrl?: string,    // default https://api.xiaomimimo.com/v1
- *     model?: string       // default mimo-v2.5-tts
+ *     model?: string,      // default mimo-v2.5-tts
+ *     stylePrompt?: string,
+ *     voice?: string
  *   }
  *
  * Response 200:
@@ -26,6 +28,8 @@ interface MimoBody {
   apiKey?: unknown
   baseUrl?: unknown
   model?: unknown
+  stylePrompt?: unknown
+  voice?: unknown
 }
 
 function asString(v: unknown): string | undefined {
@@ -58,6 +62,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
       apiKey,
       baseUrl: asString(body.baseUrl),
       model: asString(body.model),
+      stylePrompt: asString(body.stylePrompt),
+      voice: asString(body.voice),
     })
     return NextResponse.json(result)
   } catch (err: unknown) {

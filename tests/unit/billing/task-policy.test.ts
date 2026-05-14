@@ -79,4 +79,14 @@ describe('billing/task-policy', () => {
     expect(info.model).toBe('vidu::vidu-lipsync')
     expect(info.quantity).toBe(1)
   })
+
+  it('uses explicit audio model from voice payload', () => {
+    const info = expectBillableInfo(buildDefaultTaskBillingInfo(TASK_TYPE.VOICE_LINE, {
+      audioModel: 'mimo::mimo-v2.5-tts',
+      maxSeconds: 5,
+    }))
+    expect(info.apiType).toBe('voice')
+    expect(info.model).toBe('mimo::mimo-v2.5-tts')
+    expect(info.maxFrozenCost).toBe(0)
+  })
 })

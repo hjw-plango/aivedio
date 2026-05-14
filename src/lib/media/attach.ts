@@ -43,14 +43,43 @@ async function attachMediaFieldsToAppearance<T extends Record<string, unknown>>(
   }
 }
 
+async function resolveLegacyUrl(value: unknown): Promise<string | null> {
+  const media = await resolveMediaRefFromLegacyValue(value)
+  if (media?.url) return media.url
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+async function resolveCharacterReferenceUrls<T extends Record<string, unknown>>(character: T) {
+  const [
+    referenceFrontUrl,
+    referenceThreeQuarterUrl,
+    referenceSideUrl,
+    referenceBackUrl,
+  ] = await Promise.all([
+    resolveLegacyUrl(character.referenceFrontUrl),
+    resolveLegacyUrl(character.referenceThreeQuarterUrl),
+    resolveLegacyUrl(character.referenceSideUrl),
+    resolveLegacyUrl(character.referenceBackUrl),
+  ])
+
+  return {
+    referenceFrontUrl,
+    referenceThreeQuarterUrl,
+    referenceSideUrl,
+    referenceBackUrl,
+  }
+}
+
 export async function attachMediaFieldsToGlobalCharacter<T extends Record<string, unknown>>(character: T) {
   const customVoiceMedia = await resolveMediaRef(character.customVoiceMediaId, character.customVoiceUrl)
+  const referenceUrls = await resolveCharacterReferenceUrls(character)
   const appearances = await Promise.all(
     ((character.appearances as Array<Record<string, unknown>>) || []).map(attachMediaFieldsToAppearance),
   )
 
   return {
     ...character,
+    ...referenceUrls,
     media: customVoiceMedia,
     customVoiceMedia,
     customVoiceUrl: customVoiceMedia?.url || character.customVoiceUrl || null,
@@ -142,11 +171,13 @@ async function attachMediaFieldsToStoryboard<T extends Record<string, unknown>>(
 
 async function attachMediaFieldsToProjectCharacter<T extends Record<string, unknown>>(character: T) {
   const customVoiceMedia = await resolveMediaRef(character.customVoiceMediaId, character.customVoiceUrl)
+  const referenceUrls = await resolveCharacterReferenceUrls(character)
   const appearances = await Promise.all(
     ((character.appearances as Array<Record<string, unknown>>) || []).map(attachMediaFieldsToAppearance),
   )
   return {
     ...character,
+    ...referenceUrls,
     media: customVoiceMedia,
     customVoiceMedia,
     customVoiceUrl: customVoiceMedia?.url || character.customVoiceUrl || null,

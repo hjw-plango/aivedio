@@ -1,7 +1,7 @@
 'use client'
 import { useTranslations } from 'next-intl'
 
-import type { VideoGenerationOptions, VideoModelOption, VideoPanel } from './types'
+import type { VideoDurationMode, VideoGenerationOptions, VideoModelOption, VideoPanel } from './types'
 import type { CapabilityValue } from '@/lib/model-config-contract'
 import TaskStatusInline from '@/components/task/TaskStatusInline'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
@@ -18,6 +18,7 @@ interface FirstLastFramePanelProps {
   flModel: string
   flModelOptions: VideoModelOption[]
   flGenerationOptions: VideoGenerationOptions
+  flDurationMode?: VideoDurationMode
   flCapabilityFields: Array<{
     field: string
     label: string
@@ -42,6 +43,7 @@ interface FirstLastFramePanelProps {
     panelKey: string,
     generationOptions?: VideoGenerationOptions,
     firstPanelId?: string,
+    durationMode?: VideoDurationMode,
   ) => void
   onPreviewImage?: (imageUrl: string) => void
 }
@@ -55,6 +57,7 @@ export default function FirstLastFramePanel({
   flModel,
   flModelOptions,
   flGenerationOptions,
+  flDurationMode = 'auto',
   flCapabilityFields,
   customPrompt,
   defaultPrompt,
@@ -159,7 +162,7 @@ export default function FirstLastFramePanel({
       </div>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => onGenerate(panel.storyboardId, panel.panelIndex, nextPanel.storyboardId, nextPanel.panelIndex, panelKey, flGenerationOptions, panel.panelId)}
+          onClick={() => onGenerate(panel.storyboardId, panel.panelIndex, nextPanel.storyboardId, nextPanel.panelIndex, panelKey, flGenerationOptions, panel.panelId, flDurationMode)}
           disabled={isVideoTaskRunning || !panel.imageUrl || !nextPanel.imageUrl || !flModel || hasMissingCapabilities}
           className={`glass-btn-base flex-1 py-2 text-sm font-medium disabled:opacity-50 ${isFirstLastFrameGenerated
             ? 'bg-[var(--glass-tone-success-fg)] text-white'

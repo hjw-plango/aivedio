@@ -18,6 +18,7 @@ import { normalizeToBase64ForGeneration } from '@/lib/media/outbound-image'
 import { resolveBuiltinCapabilitiesByModelKey } from '@/lib/model-capabilities/lookup'
 import { parseModelKeyStrict } from '@/lib/model-config-contract'
 import { getProviderConfig } from '@/lib/api-config'
+import { buildPanelVideoGenerationPrompt } from '@/lib/novel-promotion/video-prompt-compiler'
 
 type AnyObj = Record<string, unknown>
 type VideoOptionValue = string | number | boolean
@@ -38,7 +39,7 @@ function extractGenerationOptions(payload: AnyObj): VideoOptionMap {
 
   const next: VideoOptionMap = {}
   for (const [key, value] of Object.entries(fromEnvelope as Record<string, unknown>)) {
-    if (key === 'aspectRatio') continue
+    if (key === 'aspectRatio' || key === 'prompt') continue
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       next[key] = value
     }
@@ -96,8 +97,8 @@ async function generateVideoForPanel(
   const firstLastCustomPrompt = typeof firstLastFramePayload?.customPrompt === 'string' ? firstLastFramePayload.customPrompt : null
   const persistedFirstLastPrompt = firstLastFramePayload ? panel.firstLastFramePrompt : null
   const customPrompt = typeof payload.customPrompt === 'string' ? payload.customPrompt : null
-  const prompt = firstLastCustomPrompt || persistedFirstLastPrompt || customPrompt || panel.videoPrompt || panel.description
-  if (!prompt) {
+  const basePrompt = firstLastCustomPrompt || persistedFirstLastPrompt || customPrompt || panel.videoPrompt || panel.description
+  if (!basePrompt) {
     throw new Error(`Panel ${panel.id} has no video prompt`)
   }
 
@@ -113,6 +114,7 @@ async function generateVideoForPanel(
     ? generationOptions.generateAudio
     : undefined
   let model = modelId
+  let lastFramePanel: PanelRecord | null = null
 
   if (firstLastFramePayload) {
     model =
@@ -132,6 +134,7 @@ async function generateVideoForPanel(
         firstLastFramePayload.lastFrameStoryboardId,
         Number(firstLastFramePayload.lastFramePanelIndex),
       )
+      lastFramePanel = lastPanel
       if (lastPanel?.imageUrl) {
         const lastFrameUrl = toSignedUrlIfCos(lastPanel.imageUrl, 3600)
         if (lastFrameUrl) {
@@ -140,6 +143,13 @@ async function generateVideoForPanel(
       }
     }
   }
+
+  const prompt = buildPanelVideoGenerationPrompt({
+    panel,
+    lastPanel: lastFramePanel,
+    basePrompt,
+    mode: generationMode,
+  })
 
   const generatedVideo = await resolveVideoSourceFromGeneration(job, {
     userId: job.data.userId,

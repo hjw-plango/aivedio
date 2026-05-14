@@ -12,6 +12,15 @@ type PanelRow = {
   description: string | null
   firstLastFramePrompt: string | null
   duration: number | null
+  shotType?: string | null
+  cameraMove?: string | null
+  location?: string | null
+  characters?: string | null
+  props?: string | null
+  srtSegment?: string | null
+  imagePrompt?: string | null
+  photographyRules?: string | null
+  actingNotes?: string | null
 }
 
 const workerState = vi.hoisted(() => ({
@@ -194,6 +203,44 @@ describe('worker video processor behavior', () => {
         Authorization: 'Bearer oa-key',
       },
     )
+  })
+
+  it('VIDEO_PANEL: uses compiled storyboard context prompt and ignores generationOptions.prompt', async () => {
+    const processor = workerState.processor
+    expect(processor).toBeTruthy()
+
+    prismaMock.novelPromotionPanel.findUnique.mockResolvedValueOnce(buildPanel({
+      videoPrompt: 'base motion prompt',
+      shotType: 'close shot',
+      cameraMove: 'slow push in',
+      location: 'study room',
+      characters: JSON.stringify([{ name: 'Ava', appearance: 'white shirt' }]),
+      photographyRules: JSON.stringify({ color_tone: 'warm practical light' }),
+      actingNotes: JSON.stringify([{ name: 'Ava', acting: 'eyes flicker, fingers tighten' }]),
+      imagePrompt: 'keep first frame composition',
+    }))
+
+    const job = buildJob({
+      type: TASK_TYPE.VIDEO_PANEL,
+      payload: {
+        videoModel: 'fal::video-model',
+        generationOptions: {
+          duration: 5,
+          prompt: 'do not use this prompt',
+        },
+      },
+    })
+
+    await processor!(job)
+
+    const call = utilsMock.resolveVideoSourceFromGeneration.mock.calls.at(-1)
+    const input = call?.[1] as { options?: { prompt?: string } } | undefined
+    const prompt = input?.options?.prompt || ''
+    expect(prompt).toContain('base motion prompt')
+    expect(prompt).toContain('镜头设计: close shot，slow push in')
+    expect(prompt).toContain('角色保持: Ava，white shirt')
+    expect(prompt).toContain('表演细节: Ava:eyes flicker, fingers tighten')
+    expect(prompt).not.toContain('do not use this prompt')
   })
 
   it('VIDEO_PANEL: 将 Ark 返回的实际视频 token 用量透传到任务结果', async () => {

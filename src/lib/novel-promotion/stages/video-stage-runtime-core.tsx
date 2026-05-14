@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import {
   VideoToolbar,
   type VideoGenerationOptionValue,
+  type VideoDurationMode,
   type VideoGenerationOptions,
   type VideoModelOption,
 } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video'
@@ -189,6 +190,7 @@ export function useVideoStageRuntime({
   const [submittingVideoBaselines, setSubmittingVideoBaselines] = useState<Map<string, VideoSubmissionBaseline>>(new Map())
   const [batchSelectedModel, setBatchSelectedModel] = useState('')
   const [batchGenerationOptions, setBatchGenerationOptions] = useState<VideoGenerationOptions>({})
+  const [batchTouchedCapabilityFields, setBatchTouchedCapabilityFields] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (normalVideoModelOptions.length === 0) {
@@ -202,6 +204,10 @@ export function useVideoStageRuntime({
       : (normalVideoModelOptions[0]?.value || '')
     setBatchSelectedModel(nextDefault)
   }, [normalVideoModelOptions, batchSelectedModel, defaultVideoModel])
+
+  useEffect(() => {
+    setBatchTouchedCapabilityFields(new Set())
+  }, [batchSelectedModel])
 
   const selectedBatchModelOption = useMemo<VideoModelOption | undefined>(
     () => normalVideoModelOptions.find((option) => option.value === batchSelectedModel),
@@ -286,6 +292,7 @@ export function useVideoStageRuntime({
           ? rawValue === 'true'
           : rawValue
     if (!capabilityDefinition.options.includes(parsedValue)) return
+    setBatchTouchedCapabilityFields((previous) => new Set(previous).add(field))
     setBatchGenerationOptions((previous) => ({
       ...normalizeVideoGenerationSelections({
         definitions: batchCapabilityDefinitions,
@@ -338,6 +345,7 @@ export function useVideoStageRuntime({
     },
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => {
     if (isSubmittingVideoBatch) return
 
@@ -360,7 +368,7 @@ export function useVideoStageRuntime({
     }
 
     try {
-      await onGenerateVideo(storyboardId, panelIndex, videoModel, firstLastFrame, generationOptions, panelId)
+      await onGenerateVideo(storyboardId, panelIndex, videoModel, firstLastFrame, generationOptions, panelId, durationMode)
     } catch (error) {
       setSubmittingVideoPanelKeys((previous) => {
         if (!previous.has(panelKey)) return previous
@@ -387,6 +395,7 @@ export function useVideoStageRuntime({
     flModel,
     flModelOptions,
     flGenerationOptions,
+    flTouchedCapabilityFields,
     flCapabilityFields,
     flMissingCapabilityFields,
     flCustomPrompts,
@@ -494,6 +503,7 @@ export function useVideoStageRuntime({
       await handleGenerateAllVideosWithImmediateLock({
         videoModel: batchSelectedModel,
         generationOptions: batchGenerationOptions,
+        durationMode: batchTouchedCapabilityFields.has('duration') ? 'manual' : 'auto',
       })
       setIsBatchConfigOpen(false)
     } finally {
@@ -502,6 +512,7 @@ export function useVideoStageRuntime({
   }, [
     batchGenerationOptions,
     batchSelectedModel,
+    batchTouchedCapabilityFields,
     canSubmitBatchGenerate,
     handleGenerateAllVideosWithImmediateLock,
     isConfirming,
@@ -552,6 +563,7 @@ export function useVideoStageRuntime({
         flModel={flModel}
         flModelOptions={flModelOptions}
         flGenerationOptions={flGenerationOptions}
+        flTouchedCapabilityFields={flTouchedCapabilityFields}
         flCapabilityFields={flCapabilityFields}
         flMissingCapabilityFields={flMissingCapabilityFields}
         flCustomPrompts={flCustomPrompts}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
+  VideoDurationMode,
   VideoGenerationOptions,
   VideoModelOption,
   VideoPanel,
@@ -53,6 +54,7 @@ interface UseVideoFirstLastFrameFlowParams {
     },
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => Promise<void>
   t: (key: string) => string
 }
@@ -70,6 +72,7 @@ export function useVideoFirstLastFrameFlow({
   )
   const [flModel, setFlModel] = useState(firstLastFrameModelOptions[0]?.value || '')
   const [flGenerationOptions, setFlGenerationOptions] = useState<VideoGenerationOptions>({})
+  const [flTouchedCapabilityFields, setFlTouchedCapabilityFields] = useState<Set<string>>(new Set())
   const [flCustomPrompts, setFlCustomPrompts] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
@@ -102,6 +105,10 @@ export function useVideoFirstLastFrameFlow({
       setFlModel(firstLastFrameModelOptions[0]?.value || '')
     }
   }, [firstLastFrameModelOptions, flModel])
+
+  useEffect(() => {
+    setFlTouchedCapabilityFields(new Set())
+  }, [flModel])
 
   const selectedFlModelOption = useMemo(
     () => firstLastFrameModelOptions.find((option) => option.value === flModel),
@@ -178,6 +185,7 @@ export function useVideoFirstLastFrameFlow({
     if (!definitionField || definitionField.options.length === 0) return
     const parsedValue = parseByOptionType(rawValue, definitionField.options[0])
     if (!definitionField.options.includes(parsedValue)) return
+    setFlTouchedCapabilityFields((previous) => new Set(previous).add(field))
     setFlGenerationOptions((previous) => ({
       ...normalizeVideoGenerationSelections({
         definitions: flCapabilityDefinitions,
@@ -211,6 +219,7 @@ export function useVideoFirstLastFrameFlow({
     panelKey: string,
     generationOptions?: VideoGenerationOptions,
     firstPanelId?: string,
+    durationMode?: VideoDurationMode,
   ) => {
     const persistedCustomPrompt = allPanels.find(
       (panel) =>
@@ -223,7 +232,7 @@ export function useVideoFirstLastFrameFlow({
       lastFramePanelIndex: lastPanelIndex,
       flModel,
       customPrompt,
-    }, generationOptions ?? flGenerationOptions, firstPanelId)
+    }, generationOptions ?? flGenerationOptions, firstPanelId, durationMode)
   }, [allPanels, flCustomPrompts, flGenerationOptions, flModel, onGenerateVideo])
 
   const getDefaultFlPrompt = useCallback((firstPrompt?: string, lastPrompt?: string): string => {
@@ -251,6 +260,7 @@ export function useVideoFirstLastFrameFlow({
     flModel,
     flModelOptions: firstLastFrameModelOptions,
     flGenerationOptions,
+    flTouchedCapabilityFields,
     flCapabilityFields,
     flMissingCapabilityFields,
     flCustomPrompts,

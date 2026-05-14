@@ -15,6 +15,11 @@ import {
 } from '@/lib/model-capabilities/lookup'
 import { resolveBuiltinPricing } from '@/lib/model-pricing/lookup'
 import { resolveProjectModelCapabilityGenerationOptions } from '@/lib/config-service'
+import {
+  applyRecommendedVideoDurationOption,
+  buildVideoPanelGuidance,
+  type VideoGuidancePanelInput,
+} from '@/lib/novel-promotion/video-panel-guidance'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -24,7 +29,7 @@ function toVideoRuntimeSelections(value: unknown): Record<string, CapabilityValu
   if (!isRecord(value)) return {}
   const selections: Record<string, CapabilityValue> = {}
   for (const [field, raw] of Object.entries(value)) {
-    if (field === 'aspectRatio') continue
+    if (field === 'aspectRatio' || field === 'prompt') continue
     if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
       selections[field] = raw
     }
@@ -56,6 +61,73 @@ function resolveVideoModelKeyFromPayload(payload: Record<string, unknown>): stri
     return payload.videoModel
   }
   return null
+}
+
+function toGenerationOptionRecord(value: unknown): Record<string, CapabilityValue> {
+  if (!isRecord(value)) return {}
+  const options: Record<string, CapabilityValue> = {}
+  for (const [field, raw] of Object.entries(value)) {
+    if (field === 'aspectRatio' || field === 'prompt') continue
+    if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+      options[field] = raw
+    }
+  }
+  return options
+}
+
+function resolveCompatibleDurationOptions(input: {
+  modelKey: string
+  generationMode: 'normal' | 'firstlastframe'
+  generationOptions: Record<string, CapabilityValue>
+  durationOptions: readonly CapabilityValue[]
+}): CapabilityValue[] {
+  const compatible = input.durationOptions.filter((duration) => {
+    if (typeof duration !== 'number') return false
+    const pricing = resolveBuiltinPricing({
+      apiType: 'video',
+      model: input.modelKey,
+      selections: {
+        ...input.generationOptions,
+        duration,
+        generationMode: input.generationMode,
+        ...(isSeedance2Model(input.modelKey) ? { containsVideoInput: false } : {}),
+      },
+    })
+    return pricing.status !== 'missing_capability_match'
+  })
+  return compatible.length > 0 ? compatible : input.durationOptions.slice()
+}
+
+function applyPanelAutoDurationPayload<T extends Record<string, unknown>>(
+  payload: T,
+  panel: VideoGuidancePanelInput,
+): T {
+  if (payload.durationMode !== 'auto') return payload
+
+  const modelKey = resolveVideoModelKeyFromPayload(payload)
+  if (!modelKey) return payload
+
+  const durationOptions = resolveBuiltinCapabilitiesByModelKey('video', modelKey)?.video?.durationOptions
+  if (!durationOptions || durationOptions.length === 0) return payload
+
+  const generationOptions = toGenerationOptionRecord(payload.generationOptions)
+  const compatibleDurationOptions = resolveCompatibleDurationOptions({
+    modelKey,
+    generationMode: resolveVideoGenerationMode(payload),
+    generationOptions,
+    durationOptions,
+  })
+  const guidance = buildVideoPanelGuidance({ panel })
+  const nextGenerationOptions = applyRecommendedVideoDurationOption({
+    generationOptions,
+    durationOptions: compatibleDurationOptions,
+    guidance,
+  })
+
+  return {
+    ...payload,
+    generationOptions: nextGenerationOptions,
+  }
 }
 
 function requireVideoModelKeyFromPayload(payload: unknown): string {
@@ -218,7 +290,16 @@ export const POST = apiHandler(async (
           { videoUrl: '' },
         ],
       },
-      select: { id: true },
+      select: {
+        id: true,
+        imageUrl: true,
+        duration: true,
+        shotType: true,
+        cameraMove: true,
+        description: true,
+        location: true,
+        characters: true,
+      },
     })
 
     if (panels.length === 0) {
@@ -226,8 +307,9 @@ export const POST = apiHandler(async (
     }
 
     const results = await Promise.all(
-      panels.map(async (panel) =>
-        submitTask({
+      panels.map(async (panel) => {
+        const payload = applyPanelAutoDurationPayload(body, panel)
+        return submitTask({
           userId: session.user.id,
           locale,
           requestId: getRequestId(request),
@@ -236,13 +318,13 @@ export const POST = apiHandler(async (
           type: TASK_TYPE.VIDEO_PANEL,
           targetType: 'NovelPromotionPanel',
           targetId: panel.id,
-          payload: withTaskUiPayload(body, {
+          payload: withTaskUiPayload(payload, {
             hasOutputAtStart: await hasPanelVideoOutput(panel.id),
           }),
           dedupeKey: `video_panel:${panel.id}`,
-          billingInfo: buildVideoPanelBillingInfoOrThrow(body),
-        }),
-      ),
+          billingInfo: buildVideoPanelBillingInfoOrThrow(payload),
+        })
+      }),
     )
 
     return NextResponse.json({ tasks: results, total: panels.length })
@@ -256,13 +338,23 @@ export const POST = apiHandler(async (
 
   const panel = await prisma.novelPromotionPanel.findFirst({
     where: { storyboardId, panelIndex: Number(panelIndex) },
-    select: { id: true },
+    select: {
+      id: true,
+      imageUrl: true,
+      duration: true,
+      shotType: true,
+      cameraMove: true,
+      description: true,
+      location: true,
+      characters: true,
+    },
   })
 
   if (!panel) {
     throw new ApiError('NOT_FOUND')
   }
 
+  const payload = applyPanelAutoDurationPayload(body, panel)
   const result = await submitTask({
     userId: session.user.id,
     locale,
@@ -271,11 +363,11 @@ export const POST = apiHandler(async (
     type: TASK_TYPE.VIDEO_PANEL,
     targetType: 'NovelPromotionPanel',
     targetId: panel.id,
-    payload: withTaskUiPayload(body, {
+    payload: withTaskUiPayload(payload, {
       hasOutputAtStart: await hasPanelVideoOutput(panel.id),
     }),
     dedupeKey: `video_panel:${panel.id}`,
-    billingInfo: buildVideoPanelBillingInfoOrThrow(body),
+    billingInfo: buildVideoPanelBillingInfoOrThrow(payload),
   })
 
   return NextResponse.json(result)

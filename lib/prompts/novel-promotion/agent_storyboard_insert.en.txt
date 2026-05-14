@@ -30,7 +30,7 @@ Output format (single JSON object only):
   "shot_type": "shot type",
   "camera_move": "camera movement",
   "video_prompt": "video prompt",
-  "duration": 3
+  "duration": 1.5
 }
 
 Rules:
@@ -40,5 +40,6 @@ Rules:
 4. If location details include available slots, treat them as preferred anchors. Reuse a provided `slot` for characters who are stably positioned in the scene.
 5. You may omit `slot` when the inserted panel is mainly about movement, entry/exit, path traversal, transition space, temporary space, empty space, imagination, dream, memory, or abstract/non-literal space.
 6. If `slot` is used, it must copy one full placement phrase from the available slots list verbatim. Do not shorten or rename it.
-7. JSON only, no markdown.
-8. ⚠️ JSON SAFETY: All quotation marks in text (""''「」 etc.) MUST be converted to corner brackets「」in JSON string values. NEVER use raw ASCII double quotes " inside string values.
+7. `duration` is the final edit target duration in seconds, not the video platform generation tier. Tiny reactions or object close-ups are 1-1.5s, short actions are 1.5-2s, regular actions or short dialogue are 2-3s, continuous movement is 3-4s. Do not default short shots to 5s.
+8. JSON only, no markdown.
+9. ⚠️ JSON SAFETY: All quotation marks in text (""''「」 etc.) MUST be converted to corner brackets「」in JSON string values. NEVER use raw ASCII double quotes " inside string values.

@@ -101,7 +101,8 @@
         "negativeHint": "Negative prompt"
       },
       "errors": {
-        "subjectRequired": "subject is required"
+        "subjectRequired": "subject is required",
+        "copyFailed": "The browser blocked automatic copy. Select the text and copy it manually."
       }
     },
     "upload": {
@@ -155,8 +156,17 @@
     "title": "Generate this panel via Jimeng",
     "promptLabel": "Video prompt (editable)",
     "copyPrompt": "Copy prompt",
+    "copyPackage": "Copy shot pack",
     "copied": "Copied",
+    "packageCopied": "Shot pack copied",
+    "copyFailed": "The browser blocked automatic copy. Select the text and copy it manually.",
     "openJimeng": "Open Jimeng ↗",
+    "guidanceTitle": "Generation guidance",
+    "durationAdvice": "Duration",
+    "frameAdvice": "First/last frame",
+    "referenceTitle": "Jimeng reference pack",
+    "packageLoading": "Preparing prompt and references…",
+    "noReferences": "No reference images available. The prompt can still be copied.",
     "uploadHint": "After Jimeng generation completes, download the mp4 and upload here. It will be written to this panel's videoUrl.",
     "uploadLabel": "Upload mp4 to this panel",
     "uploading": "Uploading…",

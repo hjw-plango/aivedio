@@ -107,7 +107,7 @@ function resolveCost(input: CostInput) {
       return asMoney(calcVideo(input.model, resolution, input.quantity, input.metadata, input.customPricing))
     }
     case 'voice':
-      return asMoney(calcVoice(input.quantity))
+      return asMoney(calcVoice(input.quantity, input.model))
     case 'voice-design':
       return asMoney(calcVoiceDesign())
     case 'lip-sync':
@@ -710,17 +710,20 @@ export async function withVoiceBilling<T>(
   recordParams: BillingRecordParams,
   generateFn: () => Promise<T>,
 ): Promise<T> {
+  const model = typeof recordParams.metadata?.audioModel === 'string' && recordParams.metadata.audioModel.trim()
+    ? recordParams.metadata.audioModel.trim()
+    : 'index-tts2'
   return await withSyncBillingCore(
     {
       userId,
       projectId: recordParams.projectId,
       action: recordParams.action,
       apiType: 'voice',
-      model: 'index-tts2',
+      model,
       quantity: maxFreezeSeconds,
       unit: 'second',
       metadata: recordParams.metadata,
-      maxCost: calcVoice(maxFreezeSeconds),
+      maxCost: calcVoice(maxFreezeSeconds, model),
       extractActualQuantity: (result) => {
         if (!result || typeof result !== 'object') return null
         const value =

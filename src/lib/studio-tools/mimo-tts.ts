@@ -28,6 +28,8 @@ export interface MimoSynthesizeParams {
   apiKey: string
   baseUrl?: string // default: https://api.xiaomimimo.com/v1
   model?: MimoModel // default: mimo-v2.5-tts
+  stylePrompt?: string
+  voice?: string
 }
 
 export interface MimoSynthesizeResult {
@@ -67,19 +69,28 @@ export async function synthesizeMimoTTS(
   const baseUrl = (params.baseUrl?.replace(/\/+$/, '')) || DEFAULT_BASE_URL
   const model = params.model || DEFAULT_MODEL
   const url = `${baseUrl}/chat/completions`
+  const stylePrompt = params.stylePrompt?.trim()
+  const voice = params.voice?.trim() || 'mimo_default'
+  const supportsBuiltInVoice = model === 'mimo-v2.5-tts' || model === 'mimo-v2-tts'
 
   const body = {
     model,
     messages: [
-      // Gateway requires assistant role; assistant.content is the text to synthesize.
+      ...(stylePrompt ? [{ role: 'user', content: stylePrompt }] : []),
+      // MiMo TTS requires the target synthesis text in assistant.content.
       { role: 'assistant', content: text },
     ],
+    audio: {
+      format: 'wav',
+      ...(supportsBuiltInVoice ? { voice } : {}),
+    },
   }
 
   const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'api-key': params.apiKey,
       Authorization: `Bearer ${params.apiKey}`,
     },
     body: JSON.stringify(body),

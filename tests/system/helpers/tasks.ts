@@ -36,7 +36,27 @@ export async function waitForTaskTerminalState(taskId: string, options: WaitTask
   throw new Error(`TASK_WAIT_TIMEOUT: ${taskId}`)
 }
 
-export async function listTaskEventTypes(taskId: string): Promise<TaskEventType[]> {
+export async function listTaskEventTypes(
+  taskId: string,
+  options: WaitTaskOptions = {},
+): Promise<TaskEventType[]> {
+  const timeoutMs = options.timeoutMs ?? 3_000
+  const intervalMs = options.intervalMs ?? 100
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const events = await prisma.taskEvent.findMany({
+      where: { taskId },
+      orderBy: { createdAt: 'asc' },
+      select: { eventType: true },
+    })
+    const types = events.map((event) => event.eventType as TaskEventType)
+    if (types.includes(TASK_EVENT_TYPE.COMPLETED) || types.includes(TASK_EVENT_TYPE.FAILED)) {
+      return types
+    }
+    await sleep(intervalMs)
+  }
+
   const events = await prisma.taskEvent.findMany({
     where: { taskId },
     orderBy: { createdAt: 'asc' },

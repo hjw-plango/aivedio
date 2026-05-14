@@ -5,6 +5,7 @@ import { apiHandler, ApiError } from '@/lib/api-errors'
 import { toMoneyNumber } from '@/lib/billing/money'
 import { isArtStyleValue } from '@/lib/constants'
 import { resolveTaskLocale } from '@/lib/task/resolve-locale'
+import { pickConfiguredMimoTtsModel } from '@/lib/voice/default-audio-model'
 import {
   formatProjectValidationIssue,
   normalizeProjectDraft,
@@ -207,6 +208,7 @@ export const POST = apiHandler(async (request: NextRequest) => {
   const userPreference = await prisma.userPreference.findUnique({
     where: { userId: session.user.id }
   })
+  const defaultAudioModel = pickConfiguredMimoTtsModel(userPreference) || userPreference?.audioModel
 
   // 创建基础项目
   const project = await prisma.project.create({
@@ -232,7 +234,7 @@ export const POST = apiHandler(async (request: NextRequest) => {
         storyboardModel: userPreference.storyboardModel,
         editModel: userPreference.editModel,
         videoModel: userPreference.videoModel,
-        audioModel: userPreference.audioModel,
+        audioModel: defaultAudioModel,
         videoRatio: userPreference.videoRatio,
         artStyle: isArtStyleValue(userPreference.artStyle) ? userPreference.artStyle : 'american-comic',
         ttsRate: userPreference.ttsRate

@@ -14,6 +14,10 @@ export interface MimoTTSInput {
   modelId: string
   /** Optional baseUrl override. */
   baseUrl?: string
+  /** Optional style/emotion instruction. The spoken text remains `text`. */
+  stylePrompt?: string | null
+  /** Built-in voice id for `mimo-v2.5-tts`; defaults to `mimo_default`. */
+  voice?: string | null
 }
 
 export interface MimoTTSResult {

@@ -2,6 +2,30 @@
 
 import { useState, useEffect } from 'react'
 import { JIMENG_WEBSITE_URL } from '@/lib/studio-tools/jimeng-prompt'
+import { copyTextToClipboard } from '@/lib/browser/clipboard'
+
+interface JimengReferenceItem {
+  kind: string
+  label: string
+  url: string
+}
+
+interface JimengGuidanceText {
+  durationSummary: string
+  durationNote: string
+  firstLastFrameSummary: string
+  firstLastFrameNote: string
+}
+
+interface JimengPanelPackage {
+  prompt: string
+  negative?: string
+  references: JimengReferenceItem[]
+  packageText: string
+  guidance?: {
+    text?: JimengGuidanceText
+  }
+}
 
 export interface JimengPanelModalProps {
   open: boolean
@@ -25,8 +49,17 @@ export interface JimengPanelModalProps {
     title: string
     promptLabel: string
     copyPrompt: string
+    copyPackage: string
     copied: string
+    packageCopied: string
+    copyFailed: string
     openJimeng: string
+    guidanceTitle: string
+    durationAdvice: string
+    frameAdvice: string
+    referenceTitle: string
+    packageLoading: string
+    noReferences: string
     uploadHint: string
     uploadLabel: string
     uploading: string
@@ -55,6 +88,9 @@ export default function JimengPanelModal({
 }: JimengPanelModalProps) {
   const [prompt, setPrompt] = useState(initialPrompt)
   const [copied, setCopied] = useState(false)
+  const [packageCopied, setPackageCopied] = useState(false)
+  const [panelPackage, setPanelPackage] = useState<JimengPanelPackage | null>(null)
+  const [packageLoading, setPackageLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [linked, setLinked] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -63,21 +99,68 @@ export default function JimengPanelModal({
     if (open) {
       setPrompt(initialPrompt)
       setCopied(false)
+      setPackageCopied(false)
+      setPanelPackage(null)
+      setPackageLoading(false)
       setUploading(false)
       setLinked(null)
       setError(null)
     }
   }, [open, initialPrompt])
 
+  useEffect(() => {
+    if (!open || !panelId) return
+
+    let cancelled = false
+    async function fetchPackage() {
+      setPackageLoading(true)
+      try {
+        const resp = await fetch(`/api/studio-tools/jimeng/panel-package?panelId=${encodeURIComponent(panelId)}`)
+        const json = await resp.json()
+        if (cancelled) return
+        if (!resp.ok) {
+          return
+        }
+        const nextPackage = json as JimengPanelPackage
+        setPanelPackage(nextPackage)
+        if (nextPackage.prompt) {
+          setPrompt(nextPackage.prompt)
+        }
+      } catch {
+        // The user can still copy/edit the plain prompt.
+      } finally {
+        if (!cancelled) setPackageLoading(false)
+      }
+    }
+
+    void fetchPackage()
+    return () => {
+      cancelled = true
+    }
+  }, [open, panelId])
+
   if (!open) return null
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(prompt)
+      setError(null)
+      await copyTextToClipboard(prompt)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // ignore
+      setError(labels.copyFailed)
+    }
+  }
+
+  async function copyPackage() {
+    const text = panelPackage?.packageText || prompt
+    try {
+      setError(null)
+      await copyTextToClipboard(text)
+      setPackageCopied(true)
+      setTimeout(() => setPackageCopied(false), 1500)
+    } catch {
+      setError(labels.copyFailed)
     }
   }
 
@@ -155,6 +238,13 @@ export default function JimengPanelModal({
           >
             {copied ? labels.copied : labels.copyPrompt}
           </button>
+          <button
+            type="button"
+            onClick={copyPackage}
+            className="glass-btn-base glass-btn-soft px-3 py-1.5 text-sm"
+          >
+            {packageCopied ? labels.packageCopied : labels.copyPackage}
+          </button>
           <a
             href={JIMENG_WEBSITE_URL}
             target="_blank"
@@ -163,6 +253,62 @@ export default function JimengPanelModal({
           >
             {labels.openJimeng}
           </a>
+        </div>
+
+        {panelPackage?.guidance?.text && (
+          <div className="mb-4 rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-muted)] p-3">
+            <div className="mb-2 text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>
+              {labels.guidanceTitle}
+            </div>
+            <div className="space-y-2 text-xs" style={{ color: 'var(--glass-text-secondary)' }}>
+              <div>
+                <span className="font-medium">{labels.durationAdvice}: </span>
+                <span>{panelPackage.guidance.text.durationSummary}</span>
+                <div className="mt-0.5 text-[11px]" style={{ color: 'var(--glass-text-tertiary)' }}>
+                  {panelPackage.guidance.text.durationNote}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium">{labels.frameAdvice}: </span>
+                <span>{panelPackage.guidance.text.firstLastFrameSummary}</span>
+                <div className="mt-0.5 text-[11px]" style={{ color: 'var(--glass-text-tertiary)' }}>
+                  {panelPackage.guidance.text.firstLastFrameNote}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-4 rounded-lg border border-[var(--glass-stroke-base)] bg-[var(--glass-bg-muted)] p-3">
+          <div className="mb-2 text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>
+            {labels.referenceTitle}
+          </div>
+          {packageLoading ? (
+            <div className="text-xs" style={{ color: 'var(--glass-text-tertiary)' }}>
+              {labels.packageLoading}
+            </div>
+          ) : panelPackage?.references?.length ? (
+            <div className="grid grid-cols-2 gap-2">
+              {panelPackage.references.map((item) => (
+                <a
+                  key={`${item.kind}:${item.url}`}
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded border border-[var(--glass-stroke-soft)] bg-[var(--glass-bg-surface)] p-1.5 text-[11px] hover:bg-[var(--glass-bg-muted)]"
+                  style={{ color: 'var(--glass-text-secondary)' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.url} alt={item.label} className="h-10 w-10 flex-shrink-0 rounded object-cover" />
+                  <span className="line-clamp-2">{item.label}</span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs" style={{ color: 'var(--glass-text-tertiary)' }}>
+              {labels.noReferences}
+            </div>
+          )}
         </div>
 
         <div

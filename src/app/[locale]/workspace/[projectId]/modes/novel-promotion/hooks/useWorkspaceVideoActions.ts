@@ -3,7 +3,7 @@
 import { logInfo as _ulogInfo, logError as _ulogError } from '@/lib/logging/core'
 import { useGenerateVideo, useBatchGenerateVideos } from '@/lib/query/hooks/useStoryboards'
 import { useUpdateProjectPanelVideoPrompt, useUpdateProjectClip, useUpdateProjectConfig } from '@/lib/query/hooks'
-import type { BatchVideoGenerationParams, VideoGenerationOptions } from '../components/video'
+import type { BatchVideoGenerationParams, VideoGenerationOptions, VideoDurationMode } from '../components/video'
 
 interface UseWorkspaceVideoActionsParams {
   projectId: string
@@ -50,6 +50,7 @@ export function useWorkspaceVideoActions({
     },
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => {
     const normalizedVideoModel = typeof videoModel === 'string' ? videoModel.trim() : ''
     if (!normalizedVideoModel) {
@@ -64,6 +65,7 @@ export function useWorkspaceVideoActions({
         videoModel: normalizedVideoModel,
         firstLastFrame,
         generationOptions,
+        durationMode,
       })
     } catch (err: unknown) {
       if (isAbortError(err)) {

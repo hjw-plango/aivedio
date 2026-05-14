@@ -137,6 +137,39 @@
     "asLastFrame": "As last frame for Panel {number}",
     "thenTransitionTo": "then transition to"
   },
+  "guidance": {
+    "duration": {
+      "default": "Target {seconds}s",
+      "short": "Target {seconds}s",
+      "standard": "Target {seconds}s",
+      "long": "Target {seconds}s",
+      "reason": {
+        "default": "No clear subtitle duration was found, so this estimates {seconds}s from the shot action.",
+        "short": "The panel source duration is about {sourceSeconds}s. Treat this as a {seconds}s short shot instead of stretching it to 5s.",
+        "standard": "The panel source duration is about {sourceSeconds}s. Generate with a {seconds}s shot rhythm.",
+        "long": "The panel source duration is about {sourceSeconds}s. Target {seconds}s; split the action if it runs beyond 10s."
+      }
+    },
+    "firstLastFrame": {
+      "recommended": "Use first/last frame",
+      "optional": "Optional first/last",
+      "notRecommended": "Normal video",
+      "unavailable": "Add frame images",
+      "linked": "First/last enabled",
+      "linkedReview": "Enabled, review",
+      "tooltip": "First/last frame uses this shot as the first frame and the next shot as the last frame. Use it for continuous action in the same scene; use normal generation for scene cuts, character cuts, or time jumps.",
+      "reason": {
+        "lastPanel": "This is the final shot, so there is no next frame to link.",
+        "missingFrame": "This shot or the next shot is missing an image, so first/last frame is not stable.",
+        "sceneChange": "The next shot changes scene. Generate separately and cut in editing.",
+        "characterChange": "The next shot changes character. Separate generation avoids identity bleeding.",
+        "continuousMotion": "The scene or character continues with motion, so first/last frame helps keep continuity.",
+        "sameSceneCharacter": "Same scene and character, but motion is not strongly continuous. Use it when the visuals need continuity.",
+        "sameScene": "Scene or character continues, so first/last frame can help consistency.",
+        "insufficientContinuity": "No clear continuity was detected, so normal generation is the default."
+      }
+    }
+  },
   "editor": {
     "alert": {
       "saveSuccess": "Saved successfully",

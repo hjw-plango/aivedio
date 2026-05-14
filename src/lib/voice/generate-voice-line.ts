@@ -6,6 +6,7 @@ import { normalizeToBase64ForGeneration } from '@/lib/media/outbound-image'
 import { extractStorageKey, getSignedUrl, toFetchableUrl, uploadObject } from '@/lib/storage'
 import { resolveStorageKeyFromMediaValue } from '@/lib/media/service'
 import { synthesizeWithBailianTTS } from '@/lib/providers/bailian'
+import { synthesizeWithMimoTTS } from '@/lib/providers/mimo'
 import {
   parseSpeakerVoiceMap,
   resolveVoiceBindingForProvider,
@@ -29,6 +30,11 @@ function normalizeBailianVoiceGenerationError(errorMessage: string | null | unde
   }
 
   return message
+}
+
+function normalizeMimoVoiceGenerationError(errorMessage: string | null | undefined) {
+  const message = typeof errorMessage === 'string' ? errorMessage.trim() : ''
+  return message || 'MIMO_AUDIO_GENERATION_FAILED'
 }
 
 function getWavDurationFromBuffer(buffer: Buffer): number {
@@ -260,6 +266,23 @@ export async function generateVoiceLine(params: {
     generated = {
       audioData,
       audioDuration: result.audioDuration ?? getWavDurationFromBuffer(audioData),
+    }
+  } else if (providerKey === 'mimo') {
+    const { apiKey, baseUrl } = await getProviderConfig(params.userId, audioSelection.provider)
+    const result = await synthesizeWithMimoTTS({
+      text,
+      modelId: audioSelection.modelId,
+      baseUrl,
+      stylePrompt: line.emotionPrompt,
+    }, apiKey)
+    if (!result.success || !result.audioData) {
+      throw new Error(normalizeMimoVoiceGenerationError(result.error))
+    }
+
+    const audioData = result.audioData
+    generated = {
+      audioData,
+      audioDuration: getWavDurationFromBuffer(audioData),
     }
   } else {
     throw new Error(`AUDIO_PROVIDER_UNSUPPORTED: ${audioSelection.provider}`)

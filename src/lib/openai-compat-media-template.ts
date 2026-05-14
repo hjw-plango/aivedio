@@ -29,6 +29,12 @@ export interface TemplateResponseMap {
   statusPath?: string
   outputUrlPath?: string
   outputUrlsPath?: string
+  /** JSONPath to a base64-encoded image string. Used by GPT Image series (gpt-image-1/1.5/2)
+   * which always return `data[0].b64_json` and never expose URLs. Will be wrapped to a
+   * `data:<mime>;base64,...` URL downstream. */
+  outputBase64Path?: string
+  /** MIME type for outputBase64Path. Defaults to image/png. */
+  outputMimeType?: string
   errorPath?: string
 }
 

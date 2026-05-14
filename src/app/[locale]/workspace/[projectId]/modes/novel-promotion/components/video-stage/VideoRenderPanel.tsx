@@ -1,7 +1,7 @@
 import { getAspectRatioConfig } from '@/lib/constants'
 import type { MutableRefObject } from 'react'
 import type { CapabilitySelections, CapabilityValue } from '@/lib/model-config-contract'
-import { VideoPanelCard, type VideoPanel, type VideoModelOption, type MatchedVoiceLine, type FirstLastFrameParams, type VideoGenerationOptions } from '../video'
+import { VideoPanelCard, type VideoPanel, type VideoModelOption, type MatchedVoiceLine, type FirstLastFrameParams, type VideoGenerationOptions, type VideoDurationMode } from '../video'
 import type { PromptField } from '@/lib/novel-promotion/stages/video-stage-runtime/useVideoPromptState'
 
 interface VideoRenderPanelProps {
@@ -22,6 +22,7 @@ interface VideoRenderPanelProps {
   flModel: string
   flModelOptions: VideoModelOption[]
   flGenerationOptions: VideoGenerationOptions
+  flTouchedCapabilityFields: ReadonlySet<string>
   flCapabilityFields: Array<{
     field: string
     label: string
@@ -38,6 +39,7 @@ interface VideoRenderPanelProps {
     firstLastFrame?: FirstLastFrameParams,
     generationOptions?: VideoGenerationOptions,
     panelId?: string,
+    durationMode?: VideoDurationMode,
   ) => Promise<void>
   onUpdatePanelVideoModel: (storyboardId: string, panelIndex: number, model: string) => Promise<void>
   onLipSync: (storyboardId: string, panelIndex: number, voiceLineId: string, panelId?: string) => Promise<void>
@@ -54,6 +56,7 @@ interface VideoRenderPanelProps {
     panelKey: string,
     generationOptions?: VideoGenerationOptions,
     firstPanelId?: string,
+    durationMode?: VideoDurationMode,
   ) => Promise<void>
   onPreviewImage: (imageUrl: string | null) => void
   onToggleLipSyncVideo: (key: string, value: boolean) => void
@@ -89,6 +92,7 @@ export default function VideoRenderPanel({
   flModel,
   flModelOptions,
   flGenerationOptions,
+  flTouchedCapabilityFields,
   flCapabilityFields,
   flMissingCapabilityFields,
   flCustomPrompts,
@@ -168,6 +172,7 @@ export default function VideoRenderPanel({
                 flModel={flModel}
                 flModelOptions={flModelOptions}
                 flGenerationOptions={flGenerationOptions}
+                flTouchedCapabilityFields={flTouchedCapabilityFields}
                 flCapabilityFields={flCapabilityFields}
                 flMissingCapabilityFields={flMissingCapabilityFields}
                 flCustomPrompt={flCustomPrompts.get(panelKey) || panel.firstLastFramePrompt || ''}

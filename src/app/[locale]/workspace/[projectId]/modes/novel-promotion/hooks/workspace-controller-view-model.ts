@@ -3,7 +3,7 @@
 import type { UserModelsPayload } from './useWorkspaceUserModels'
 import type { WorkspaceStageRuntimeValue } from '../WorkspaceStageRuntimeContext'
 import type { TaskPresentationState } from '@/lib/task/presentation'
-import type { BatchVideoGenerationParams, VideoGenerationOptions } from '../components/video'
+import type { BatchVideoGenerationParams, VideoGenerationOptions, VideoDurationMode } from '../components/video'
 import type { CapabilitySelections } from '@/lib/model-config-contract'
 import type { VideoPricingTier } from '@/lib/model-pricing/video-tier'
 import type {
@@ -116,6 +116,7 @@ interface BuildWorkspaceControllerViewModelParams {
       },
       generationOptions?: VideoGenerationOptions,
       panelId?: string,
+      durationMode?: VideoDurationMode,
     ) => Promise<void>
     handleGenerateAllVideos: (options?: BatchVideoGenerationParams) => Promise<void>
     handleUpdateVideoPrompt: (
