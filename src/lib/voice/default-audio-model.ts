@@ -6,6 +6,20 @@ const MIMO_DEFAULT_TTS_MODEL_IDS = [
   'mimo-v2-tts',
 ] as const
 
+const MIMO_EXPLICIT_TTS_MODEL_IDS = [
+  'mimo-v2.5-tts',
+  'mimo-v2-tts',
+  'mimo-v2.5-tts-voicedesign',
+  'mimo-v2.5-tts-voiceclone',
+] as const
+
+const MIMO_VOICE_DESIGN_MODEL_IDS = [
+  'mimo-v2.5-tts-voicedesign',
+  'mimo-v2.5-tts',
+  'mimo-v2-tts',
+  'mimo-v2.5-tts-voiceclone',
+] as const
+
 interface StoredModelLike {
   modelId?: unknown
   modelKey?: unknown
@@ -19,6 +33,8 @@ interface StoredProviderLike {
 }
 
 export interface StoredAudioConfigSource {
+  audioModel?: string | null
+  voiceDesignModel?: string | null
   customModels?: string | null
   customProviders?: string | null
 }
@@ -76,9 +92,55 @@ function readModelId(model: StoredModelLike): string {
   return markerIndex === -1 ? '' : modelKey.slice(markerIndex + 2).trim()
 }
 
-export function pickConfiguredMimoTtsModel(source: StoredAudioConfigSource | null | undefined): string | null {
+function parseStoredModelKey(value: unknown): { provider: string; modelId: string } | null {
+  const modelKey = readTrimmedString(value)
+  const markerIndex = modelKey.indexOf('::')
+  if (markerIndex === -1) return null
+
+  const provider = modelKey.slice(0, markerIndex).trim()
+  const modelId = modelKey.slice(markerIndex + 2).trim()
+  return provider && modelId ? { provider, modelId } : null
+}
+
+function allowsMimoModelId(modelId: string, allowedModelIds: readonly string[]) {
+  const normalized = modelId.toLowerCase()
+  return allowedModelIds.includes(modelId)
+    || (normalized.startsWith('mimo-') && normalized.includes('tts'))
+}
+
+function findConfiguredModelCandidate(
+  models: StoredModelLike[],
+  providers: StoredProviderLike[],
+  modelKey: string | null | undefined,
+  allowedModelIds: readonly string[],
+) {
+  const parsed = parseStoredModelKey(modelKey)
+  if (!parsed) return null
+  if (getProviderKey(parsed.provider).toLowerCase() !== 'mimo') return null
+  if (!allowsMimoModelId(parsed.modelId, allowedModelIds)) return null
+  if (!hasConfiguredProvider(providers, parsed.provider)) return null
+
+  const matched = models.find((model) => (
+    model.type === 'audio'
+    && readModelProvider(model) === parsed.provider
+    && readModelId(model) === parsed.modelId
+  ))
+  if (!matched) return null
+
+  return { provider: parsed.provider, modelId: parsed.modelId }
+}
+
+function pickConfiguredMimoModel(
+  source: StoredAudioConfigSource | null | undefined,
+  allowedModelIds: readonly string[],
+  explicitModelKey?: string | null,
+  options?: { explicitOnly?: boolean },
+): string | null {
   const models = parseArray<StoredModelLike>(source?.customModels)
   const providers = parseArray<StoredProviderLike>(source?.customProviders)
+  const explicit = findConfiguredModelCandidate(models, providers, explicitModelKey, allowedModelIds)
+  if (explicit) return composeModelKey(explicit.provider, explicit.modelId)
+  if (options?.explicitOnly) return null
 
   const candidates = models
     .filter((model) => model.type === 'audio')
@@ -89,16 +151,28 @@ export function pickConfiguredMimoTtsModel(source: StoredAudioConfigSource | nul
     })
     .filter((model) => (
       getProviderKey(model.provider).toLowerCase() === 'mimo'
-      && (MIMO_DEFAULT_TTS_MODEL_IDS as readonly string[]).includes(model.modelId)
+      && allowedModelIds.includes(model.modelId)
       && hasConfiguredProvider(providers, model.provider)
     ))
     .sort((a, b) => (
-      MIMO_DEFAULT_TTS_MODEL_IDS.indexOf(a.modelId as typeof MIMO_DEFAULT_TTS_MODEL_IDS[number])
-      - MIMO_DEFAULT_TTS_MODEL_IDS.indexOf(b.modelId as typeof MIMO_DEFAULT_TTS_MODEL_IDS[number])
+      allowedModelIds.indexOf(a.modelId)
+      - allowedModelIds.indexOf(b.modelId)
     ))
 
   const picked = candidates[0]
   return picked ? composeModelKey(picked.provider, picked.modelId) : null
+}
+
+export function pickConfiguredMimoTtsModel(source: StoredAudioConfigSource | null | undefined): string | null {
+  return pickConfiguredMimoModel(source, MIMO_EXPLICIT_TTS_MODEL_IDS, source?.audioModel, { explicitOnly: true })
+    || pickConfiguredMimoModel(source, MIMO_DEFAULT_TTS_MODEL_IDS)
+}
+
+export function pickConfiguredMimoVoiceDesignModel(source: StoredAudioConfigSource | null | undefined): string | null {
+  return pickConfiguredMimoModel(source, MIMO_VOICE_DESIGN_MODEL_IDS, source?.voiceDesignModel, { explicitOnly: true })
+    || pickConfiguredMimoModel(source, MIMO_VOICE_DESIGN_MODEL_IDS)
+    || pickConfiguredMimoModel(source, MIMO_EXPLICIT_TTS_MODEL_IDS, source?.audioModel, { explicitOnly: true })
+    || pickConfiguredMimoModel(source, MIMO_DEFAULT_TTS_MODEL_IDS)
 }
 
 export async function resolveConfiguredMimoTtsModel(userId: string): Promise<string | null> {

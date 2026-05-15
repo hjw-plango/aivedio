@@ -55,6 +55,7 @@ interface UserModelsPayload {
 
 const AUDIO_MODEL_EXCLUDED_IDS = new Set([
   'qwen-voice-design',
+  'mimo-v2.5-tts-voicedesign',
 ])
 
 function isUnifiedModelType(type: unknown): type is UnifiedModelType {
