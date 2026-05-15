@@ -13,6 +13,7 @@ import {
   type CharacterVoiceFields,
   type SpeakerVoiceMap,
 } from '@/lib/voice/provider-voice-binding'
+import { pickConfiguredMimoTtsModel } from '@/lib/voice/default-audio-model'
 
 type CheckCancelled = () => Promise<void>
 type CharacterVoiceProfile = CharacterVoiceFields & { name: string }
@@ -193,7 +194,7 @@ export async function generateVoiceLine(params: {
     throw new Error('episodeId is required')
   }
 
-  const [projectData, episode] = await Promise.all([
+  const [projectData, episode, pref] = await Promise.all([
     prisma.novelPromotionProject.findUnique({
       where: { projectId: params.projectId },
       include: { characters: true },
@@ -201,6 +202,14 @@ export async function generateVoiceLine(params: {
     prisma.novelPromotionEpisode.findUnique({
       where: { id: episodeId },
       select: { speakerVoices: true },
+    }),
+    prisma.userPreference.findUnique({
+      where: { userId: params.userId },
+      select: {
+        audioModel: true,
+        customModels: true,
+        customProviders: true,
+      },
     }),
   ])
 
@@ -218,7 +227,10 @@ export async function generateVoiceLine(params: {
     throw new Error('Voice line text is empty')
   }
 
-  const audioSelection = await resolveModelSelectionOrSingle(params.userId, params.audioModel, 'audio')
+  const preferredAudioModel = typeof pref?.audioModel === 'string' ? pref.audioModel.trim() : ''
+  const configuredMimoAudioModel = pickConfiguredMimoTtsModel(pref)
+  const effectiveAudioModel = configuredMimoAudioModel || params.audioModel || preferredAudioModel || undefined
+  const audioSelection = await resolveModelSelectionOrSingle(params.userId, effectiveAudioModel, 'audio')
   const providerKey = getProviderKey(audioSelection.provider).toLowerCase()
   const voiceBinding = resolveVoiceBindingForProvider({
     providerKey,

@@ -164,8 +164,8 @@ export const POST = apiHandler(async (
       code: 'MODEL_KEY_INVALID',
       field: 'audioModel'})
   }
-  const configuredMimoAudioModel = requestedAudioModel ? null : pickConfiguredMimoTtsModel(pref)
-  const resolvedAudioModel = requestedAudioModel || configuredMimoAudioModel || projectAudioModel || preferredAudioModel
+  const configuredMimoAudioModel = pickConfiguredMimoTtsModel(pref)
+  const resolvedAudioModel = configuredMimoAudioModel || requestedAudioModel || projectAudioModel || preferredAudioModel
   const selectedResolvedAudioModel = await resolveModelSelectionOrSingle(
     session.user.id,
     resolvedAudioModel || null,

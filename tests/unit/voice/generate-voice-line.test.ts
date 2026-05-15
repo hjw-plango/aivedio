@@ -11,6 +11,9 @@ const prismaMock = vi.hoisted(() => ({
   novelPromotionEpisode: {
     findUnique: vi.fn(),
   },
+  userPreference: {
+    findUnique: vi.fn(),
+  },
 }))
 
 const resolveModelSelectionOrSingleMock = vi.hoisted(() => vi.fn())
@@ -94,6 +97,11 @@ describe('generate voice line with bailian provider', () => {
           voiceId: 'voice_abc123',
         },
       }),
+    })
+    prismaMock.userPreference.findUnique.mockResolvedValue({
+      audioModel: null,
+      customModels: null,
+      customProviders: null,
     })
 
     resolveModelSelectionOrSingleMock.mockResolvedValue({
@@ -193,6 +201,61 @@ describe('generate voice line with bailian provider', () => {
     }, 'mimo-key')
     expect(synthesizeWithBailianTTSMock).not.toHaveBeenCalled()
     expect(result.audioUrl).toBe('signed://voice/storage/line-1.wav')
+  })
+
+  it('uses configured mimo over a stale bailian payload model', async () => {
+    prismaMock.userPreference.findUnique.mockResolvedValueOnce({
+      audioModel: 'bailian::qwen3-tts-vd-2026-01-26',
+      customModels: JSON.stringify([
+        {
+          modelId: 'mimo-v2.5-tts',
+          modelKey: 'mimo::mimo-v2.5-tts',
+          name: 'MiMo TTS 2.5',
+          type: 'audio',
+          provider: 'mimo',
+        },
+      ]),
+      customProviders: JSON.stringify([
+        {
+          id: 'mimo',
+          name: 'MiMo',
+          apiKey: 'mimo-key',
+        },
+      ]),
+    })
+    resolveModelSelectionOrSingleMock.mockResolvedValueOnce({
+      provider: 'mimo',
+      modelId: 'mimo-v2.5-tts',
+      modelKey: 'mimo::mimo-v2.5-tts',
+      mediaType: 'audio',
+    })
+    getProviderConfigMock.mockResolvedValueOnce({
+      id: 'mimo',
+      name: 'MiMo',
+      apiKey: 'mimo-key',
+      baseUrl: 'https://api.xiaomimimo.com/v1',
+    })
+    synthesizeWithMimoTTSMock.mockResolvedValueOnce({
+      success: true,
+      audioData: Buffer.from([1, 2, 3, 4]),
+    })
+
+    await generateVoiceLine({
+      projectId: 'project-1',
+      episodeId: 'episode-1',
+      lineId: 'line-1',
+      userId: 'user-1',
+      audioModel: 'bailian::qwen3-tts-vd-2026-01-26',
+    })
+
+    expect(resolveModelSelectionOrSingleMock).toHaveBeenCalledWith(
+      'user-1',
+      'mimo::mimo-v2.5-tts',
+      'audio',
+    )
+    expect(getProviderConfigMock).toHaveBeenCalledWith('user-1', 'mimo')
+    expect(synthesizeWithMimoTTSMock).toHaveBeenCalledTimes(1)
+    expect(synthesizeWithBailianTTSMock).not.toHaveBeenCalled()
   })
 
   it('fails explicitly when bailian speaker binding only has uploaded audio', async () => {

@@ -152,6 +152,51 @@ describe('api specific - voice generate default audio model', () => {
     expect(submitArg?.payload?.audioModel).toBe('mimo::mimo-v2.5-tts')
   })
 
+  it('prefers configured mimo tts over stale request audioModel', async () => {
+    prismaMock.userPreference.findUnique.mockResolvedValueOnce({
+      audioModel: 'bailian::qwen3-tts-vd-2026-01-26',
+      customModels: JSON.stringify([
+        {
+          modelId: 'mimo-v2.5-tts',
+          modelKey: 'mimo::mimo-v2.5-tts',
+          name: 'MiMo TTS 2.5',
+          type: 'audio',
+          provider: 'mimo',
+        },
+      ]),
+      customProviders: JSON.stringify([
+        {
+          id: 'mimo',
+          name: 'MiMo',
+          apiKey: 'encrypted-mimo-key',
+        },
+      ]),
+    })
+
+    const mod = await import('@/app/api/novel-promotion/[projectId]/voice-generate/route')
+    const req = buildMockRequest({
+      path: '/api/novel-promotion/project-1/voice-generate',
+      method: 'POST',
+      body: {
+        episodeId: 'episode-1',
+        lineId: 'line-1',
+        audioModel: 'bailian::qwen3-tts-vd-2026-01-26',
+      },
+    })
+
+    const res = await mod.POST(req, { params: Promise.resolve({ projectId: 'project-1' }) })
+    expect(res.status).toBe(200)
+    expect(apiConfigMock.resolveModelSelectionOrSingle).toHaveBeenCalledWith(
+      'user-1',
+      'mimo::mimo-v2.5-tts',
+      'audio',
+    )
+
+    const submitCall = submitTaskMock.mock.calls[0] as [{ payload?: Record<string, unknown> }] | undefined
+    const submitArg = submitCall?.[0]
+    expect(submitArg?.payload?.audioModel).toBe('mimo::mimo-v2.5-tts')
+  })
+
   it('request audioModel overrides user preference audioModel', async () => {
     const mod = await import('@/app/api/novel-promotion/[projectId]/voice-generate/route')
     const req = buildMockRequest({
